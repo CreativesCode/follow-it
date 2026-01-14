@@ -193,15 +193,57 @@ returns uuid language sql stable as $$
   limit 1;
 $$;
 
--- Policies
+-- Policies (sin recursión para evitar loops infinitos)
 drop policy if exists "businesses_select_member" on public.businesses;
-create policy "businesses_select_member" on public.businesses for select using (public.is_business_member(id, auth.uid()));
-
+drop policy if exists "businesses_insert_authenticated" on public.businesses;
 drop policy if exists "business_members_select_member" on public.business_members;
-create policy "business_members_select_member" on public.business_members for select using (public.is_business_member(business_id, auth.uid()));
+drop policy if exists "business_members_insert_self" on public.business_members;
+
+-- businesses: INSERT
+create policy "businesses_insert_authenticated"
+on public.businesses for insert
+to authenticated
+with check (true);
+
+-- businesses: SELECT (sin usar is_business_member para evitar recursión)
+create policy "businesses_select_member"
+on public.businesses for select
+to authenticated
+using (
+  EXISTS (
+    select 1 from public.business_members bm
+    where bm.business_id = businesses.id
+    and bm.user_id = auth.uid()
+    and bm.is_active = true
+  )
+  OR (created_at > now() - interval '5 minutes')
+);
+
+-- business_members: SELECT (sin recursión - solo puede ver sus propios memberships)
+create policy "business_members_select_member"
+on public.business_members for select
+to authenticated
+using (
+  user_id = auth.uid()
+);
+
+-- business_members: INSERT
+create policy "business_members_insert_self"
+on public.business_members for insert
+to authenticated
+with check (user_id = auth.uid());
 
 drop policy if exists "couriers_select_member" on public.couriers;
-create policy "couriers_select_member" on public.couriers for select using (public.is_business_member(business_id, auth.uid()) OR user_id = auth.uid());
+create policy "couriers_select_member"
+on public.couriers for select
+to authenticated
+using (
+  business_id IN (
+    select bm.business_id from public.business_members bm
+    where bm.user_id = auth.uid() and bm.is_active = true
+  )
+  OR user_id = auth.uid()
+);
 
 drop policy if exists "couriers_modify_admin" on public.couriers;
 create policy "couriers_modify_admin" on public.couriers for all using (public.is_business_member(business_id, auth.uid())) with check (public.is_business_member(business_id, auth.uid()));
@@ -241,3 +283,314 @@ create policy "courier_locations_insert_self" on public.courier_locations for in
 
 drop policy if exists "tracking_links_crud_member" on public.order_tracking_links;
 create policy "tracking_links_crud_member" on public.order_tracking_links for all using (public.is_business_member(business_id, auth.uid())) with check (public.is_business_member(business_id, auth.uid()));
+
+-- =============================================
+-- COURIER INVITATIONS SYSTEM
+-- =============================================
+
+-- Create courier_invitations table
+create table if not exists public.courier_invitations (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  invitation_code text not null unique,
+  courier_email text,
+  courier_name text,
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'expired', 'cancelled')),
+  expires_at timestamptz not null default (now() + interval '7 days'),
+  accepted_by uuid references auth.users(id) on delete set null,
+  accepted_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Create index for faster lookups
+create index if not exists idx_courier_invitations_code on public.courier_invitations (invitation_code);
+create index if not exists idx_courier_invitations_business on public.courier_invitations (business_id);
+create index if not exists idx_courier_invitations_status on public.courier_invitations (status);
+
+-- Enable RLS
+alter table public.courier_invitations enable row level security;
+
+-- Policies for courier_invitations
+drop policy if exists "courier_invitations_select_business_member" on public.courier_invitations;
+create policy "courier_invitations_select_business_member"
+on public.courier_invitations for select
+using (public.is_business_member(business_id, auth.uid()));
+
+drop policy if exists "courier_invitations_insert_business_admin" on public.courier_invitations;
+create policy "courier_invitations_insert_business_admin"
+on public.courier_invitations for insert
+with check (
+  public.is_business_member(business_id, auth.uid())
+  and created_by = auth.uid()
+);
+
+drop policy if exists "courier_invitations_update_business_admin" on public.courier_invitations;
+create policy "courier_invitations_update_business_admin"
+on public.courier_invitations for update
+using (
+  public.is_business_member(business_id, auth.uid())
+  and created_by = auth.uid()
+);
+
+drop policy if exists "courier_invitations_select_by_code" on public.courier_invitations;
+create policy "courier_invitations_select_by_code"
+on public.courier_invitations for select
+using (auth.uid() is not null);
+
+-- Function to generate unique invitation code
+create or replace function public.generate_invitation_code()
+returns text
+language plpgsql
+as $$
+declare
+  code text;
+  exists_code boolean;
+begin
+  loop
+    code := upper(substring(md5(random()::text) from 1 for 8));
+    select exists(
+      select 1 from public.courier_invitations where invitation_code = code
+    ) into exists_code;
+    exit when not exists_code;
+  end loop;
+  return code;
+end;
+$$;
+
+-- Function to accept invitation and create courier
+create or replace function public.accept_courier_invitation(
+  p_invitation_code text,
+  p_user_id uuid
+)
+returns uuid
+language plpgsql
+security definer
+as $$
+declare
+  v_invitation record;
+  v_courier_id uuid;
+begin
+  select * into v_invitation
+  from public.courier_invitations
+  where invitation_code = p_invitation_code
+  and status = 'pending'
+  and expires_at > now();
+  
+  if not found then
+    raise exception 'Invalid or expired invitation code';
+  end if;
+  
+  if exists (
+    select 1 from public.couriers
+    where business_id = v_invitation.business_id
+    and user_id = p_user_id
+  ) then
+    raise exception 'You are already a courier for this business';
+  end if;
+  
+  insert into public.couriers (
+    business_id,
+    user_id,
+    display_name,
+    phone,
+    is_active,
+    created_at,
+    updated_at
+  )
+  values (
+    v_invitation.business_id,
+    p_user_id,
+    coalesce(v_invitation.courier_name, 'Courier'),
+    coalesce(v_invitation.courier_email, ''),
+    true,
+    now(),
+    now()
+  )
+  returning id into v_courier_id;
+  
+  update public.courier_invitations
+  set 
+    status = 'accepted',
+    accepted_by = p_user_id,
+    accepted_at = now(),
+    updated_at = now()
+  where id = v_invitation.id;
+  
+  return v_courier_id;
+end;
+$$;
+
+grant execute on function public.accept_courier_invitation(text, uuid) to authenticated;
+
+-- =====================================================
+-- Migration 20240101000006: Fix Business RLS for Invitation Validation
+-- =====================================================
+-- Allow users to view basic business info when they have a valid pending invitation
+
+-- Drop and recreate the businesses select policy to include invitation validation
+drop policy if exists "businesses_select_member" on public.businesses;
+create policy "businesses_select_member"
+on public.businesses for select
+using (
+  -- Existing: User is a member of the business
+  public.is_business_member(id, auth.uid())
+  OR
+  -- New: User has a valid pending invitation for this business
+  exists (
+    select 1 
+    from public.courier_invitations ci
+    where ci.business_id = businesses.id
+    and ci.status = 'pending'
+    and ci.expires_at > now()
+    and auth.uid() is not null
+  )
+);
+
+comment on policy "businesses_select_member" on public.businesses is 
+  'Allow users to view businesses if they are members OR have a valid pending invitation';
+
+-- =====================================================
+-- Migration 20240101000007: Fix accept_courier_invitation Column Names
+-- =====================================================
+-- The couriers table uses 'display_name' and 'phone', not 'full_name' and 'email'
+
+create or replace function public.accept_courier_invitation(
+  p_invitation_code text,
+  p_user_id uuid
+)
+returns uuid
+language plpgsql
+security definer
+as $$
+declare
+  v_invitation record;
+  v_courier_id uuid;
+begin
+  -- Get invitation details
+  select * into v_invitation
+  from public.courier_invitations
+  where invitation_code = p_invitation_code
+  and status = 'pending'
+  and expires_at > now();
+  
+  if not found then
+    raise exception 'Invalid or expired invitation code';
+  end if;
+  
+  -- Check if user is already a courier for this business
+  if exists (
+    select 1 from public.couriers
+    where business_id = v_invitation.business_id
+    and user_id = p_user_id
+  ) then
+    raise exception 'You are already a courier for this business';
+  end if;
+  
+  -- Create courier record with correct column names
+  insert into public.couriers (
+    business_id,
+    user_id,
+    display_name,
+    phone,
+    is_active,
+    created_at
+  )
+  values (
+    v_invitation.business_id,
+    p_user_id,
+    coalesce(v_invitation.courier_name, 'Courier'),
+    coalesce(v_invitation.courier_email, ''),
+    true,
+    now()
+  )
+  returning id into v_courier_id;
+  
+  -- Mark invitation as accepted
+  update public.courier_invitations
+  set 
+    status = 'accepted',
+    accepted_by = p_user_id,
+    accepted_at = now(),
+    updated_at = now()
+  where id = v_invitation.id;
+  
+  return v_courier_id;
+end;
+$$;
+
+comment on function public.accept_courier_invitation(text, uuid) is 
+  'Accepts a courier invitation and creates a courier record with correct column names';
+
+-- =====================================================
+-- Migration 20240101000008: Remove updated_at from Courier Insert
+-- =====================================================
+-- The couriers table doesn't have an updated_at column, only created_at
+
+create or replace function public.accept_courier_invitation(
+  p_invitation_code text,
+  p_user_id uuid
+)
+returns uuid
+language plpgsql
+security definer
+as $$
+declare
+  v_invitation record;
+  v_courier_id uuid;
+begin
+  -- Get invitation details
+  select * into v_invitation
+  from public.courier_invitations
+  where invitation_code = p_invitation_code
+  and status = 'pending'
+  and expires_at > now();
+  
+  if not found then
+    raise exception 'Invalid or expired invitation code';
+  end if;
+  
+  -- Check if user is already a courier for this business
+  if exists (
+    select 1 from public.couriers
+    where business_id = v_invitation.business_id
+    and user_id = p_user_id
+  ) then
+    raise exception 'You are already a courier for this business';
+  end if;
+  
+  -- Create courier record (without updated_at column)
+  insert into public.couriers (
+    business_id,
+    user_id,
+    display_name,
+    phone,
+    is_active,
+    created_at
+  )
+  values (
+    v_invitation.business_id,
+    p_user_id,
+    coalesce(v_invitation.courier_name, 'Courier'),
+    coalesce(v_invitation.courier_email, ''),
+    true,
+    now()
+  )
+  returning id into v_courier_id;
+  
+  -- Mark invitation as accepted
+  update public.courier_invitations
+  set 
+    status = 'accepted',
+    accepted_by = p_user_id,
+    accepted_at = now(),
+    updated_at = now()
+  where id = v_invitation.id;
+  
+  return v_courier_id;
+end;
+$$;
+
+comment on function public.accept_courier_invitation(text, uuid) is 
+  'Accepts a courier invitation and creates a courier record (fixed to match actual table schema)';

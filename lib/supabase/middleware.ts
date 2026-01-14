@@ -3,6 +3,21 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// Public routes that don't require authentication
+const PUBLIC_ROUTES = [
+  "/",
+  "/auth/login",
+  "/auth/register",
+  "/auth/forgot-password",
+  "/auth/verify-email",
+  "/auth/callback",
+  "/terms",
+  "/privacy",
+];
+
+// Auth routes that should redirect to dashboard if user is already authenticated
+const AUTH_ROUTES = ["/auth/login", "/auth/register", "/auth/forgot-password"];
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -31,17 +46,31 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // IMPORTANT: Evitar escribir en la base de datos desde el middleware
-  // Solo refrescar la sesión si es necesario
-  await supabase.auth.getUser();
+  // Get user session
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // Si el usuario está autenticado y está intentando acceder a rutas públicas,
-  // puedes redirigir según tu lógica de negocio
-  // Ejemplo: redirigir a /admin si está autenticado y va a /login
-  // const { data: { user } } = await supabase.auth.getUser();
-  // if (user && request.nextUrl.pathname === '/login') {
-  //   return NextResponse.redirect(new URL('/admin', request.url));
-  // }
+  const pathname = request.nextUrl.pathname;
+
+  // If user is authenticated and trying to access auth pages, redirect to dashboard
+  if (user && AUTH_ROUTES.some((route) => pathname.startsWith(route))) {
+    const redirectUrl = new URL("/dashboard", request.url);
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // If user is not authenticated and trying to access protected routes, redirect to login
+  if (
+    !user &&
+    !PUBLIC_ROUTES.some(
+      (route) => pathname === route || pathname.startsWith(route)
+    )
+  ) {
+    const redirectUrl = new URL("/auth/login", request.url);
+    // Preserve the original destination
+    redirectUrl.searchParams.set("redirectTo", pathname);
+    return NextResponse.redirect(redirectUrl);
+  }
 
   return supabaseResponse;
 }

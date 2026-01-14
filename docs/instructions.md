@@ -109,6 +109,396 @@ Aquí tienes **todas las especificaciones** (producto + técnico) y un paquete c
 
 ---
 
+## 0) Sistema de Autenticación (IMPLEMENTADO)
+
+### Stack Técnico de Autenticación
+
+El sistema de autenticación está completamente implementado usando **Supabase Auth** con las siguientes características:
+
+#### Métodos de Autenticación Disponibles
+
+1. **Email/Password** ✅
+
+   - Registro con validación de contraseña segura
+   - Login con credenciales
+   - Verificación de email obligatoria (configurable)
+   - Recuperación de contraseña
+   - Cambio de contraseña
+
+2. **Magic Links** ✅
+
+   - Inicio de sesión sin contraseña
+   - Envío de enlace mágico por email
+   - Ideal para usuarios móviles
+
+3. **OAuth Providers** (preparado)
+   - Google OAuth
+   - GitHub OAuth
+   - Fácilmente extensible a otros providers
+
+#### Estructura de Archivos de Autenticación
+
+```
+lib/
+  auth/
+    actions.ts          # Server Actions para login, registro, logout, etc.
+  hooks/
+    useUser.ts          # Hook para obtener usuario actual
+    useUserRole.ts      # Hook para obtener rol del usuario
+  utils/
+    auth.ts             # Utilidades server-side para protección de rutas
+  supabase/
+    client.ts           # Cliente Supabase para componentes cliente
+    server.ts           # Cliente Supabase para Server Components
+    middleware.ts       # Middleware con protección de rutas
+
+app/
+  auth/
+    login/              # Página de inicio de sesión
+    register/           # Página de registro
+    forgot-password/    # Recuperación de contraseña
+    reset-password/     # Restablecer contraseña
+    verify-email/       # Verificación de email
+    callback/           # Callback OAuth y Magic Links
+    onboarding/         # Configuración inicial post-registro
+
+components/
+  ui/
+    FormInput.tsx       # Input reutilizable con validación
+    Button.tsx          # Botón con estados de carga
+    AuthCard.tsx        # Card container para páginas auth
+    Alert.tsx           # Componente de alertas
+    Divider.tsx         # Divisor con texto
+```
+
+#### Server Actions Implementadas
+
+Todas las server actions están en `lib/auth/actions.ts`:
+
+- `login(formData)` - Iniciar sesión con email/password
+- `register(formData)` - Crear cuenta nueva
+- `logout()` - Cerrar sesión
+- `forgotPassword(formData)` - Enviar email de recuperación
+- `resetPassword(formData)` - Actualizar contraseña
+- `sendMagicLink(formData)` - Enviar enlace mágico
+- `resendVerificationEmail()` - Reenviar email de verificación
+- `signInWithOAuth(provider)` - Iniciar sesión con OAuth
+
+#### Middleware de Protección de Rutas
+
+El middleware (`middleware.ts`) implementa:
+
+- **Rutas públicas**: `/`, `/auth/*`, `/terms`, `/privacy`
+- **Redirección automática**: usuarios autenticados no pueden acceder a páginas de auth
+- **Protección de rutas**: usuarios no autenticados son redirigidos a `/auth/login`
+- **Preservación de destino**: redirecciona al destino original post-login
+
+#### Hooks y Utilidades
+
+**Client-side hooks** (`lib/hooks/`):
+
+```typescript
+// Obtener usuario actual con reactivity
+const { user, loading } = useUser();
+
+// Obtener rol del usuario (business/courier)
+const { type, businessMember, courier, loading } = useUserRole();
+```
+
+**Server-side utilities** (`lib/utils/auth.ts`):
+
+```typescript
+// Requiere autenticación (redirige si no autenticado)
+const user = await requireAuth();
+
+// Obtener rol del usuario
+const role = await getUserRole(userId);
+
+// Requiere rol de negocio
+const { user, businessMember } = await requireBusinessRole();
+
+// Requiere rol de mensajero
+const { user, courier } = await requireCourierRole();
+```
+
+#### Flujo de Onboarding
+
+Después del registro, el usuario pasa por un flujo de onboarding:
+
+1. **Selección de Rol**:
+
+   - Negocio: crea un negocio y se convierte en owner
+   - Mensajero: debe ser invitado por un negocio
+
+2. **Configuración Inicial**:
+
+   - Negocio: nombre del negocio, zona horaria
+   - Mensajero: espera invitación
+
+3. **Redirección al Dashboard**:
+   - Una vez configurado, accede al dashboard correspondiente
+
+#### Variables de Entorno Requeridas
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Opcional: URL del sitio (para callbacks)
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+#### Validación y Seguridad
+
+- **Validación con Zod**: Todas las entradas se validan con schemas Zod
+- **Contraseñas seguras**: Mínimo 8 caracteres, mayúscula, minúscula y número
+- **CSRF Protection**: Next.js Server Actions incluyen protección CSRF
+- **RLS (Row Level Security)**: Supabase RLS protege datos a nivel de BD
+- **Session Management**: Sesiones HTTP-only cookies (no localStorage)
+- **HTTPS obligatorio**: En producción (manejo automático en Vercel/Supabase)
+
+#### Configuración de Supabase Auth
+
+En el dashboard de Supabase, configurar:
+
+1. **Email Templates** personalizados (opcional)
+2. **OAuth Providers** si usas Google/GitHub
+3. **Site URL**: tu dominio de producción
+4. **Redirect URLs**: `https://yourdomain.com/auth/callback`
+5. **Email Verification**: activar/desactivar según necesites
+
+#### Compatibilidad con Capacitor
+
+El sistema de autenticación es **100% compatible con Capacitor**:
+
+- ✅ Usa cookies HTTP-only (no localStorage)
+- ✅ Deep links configurables para OAuth
+- ✅ Funciona offline (con cola de sincronización)
+- ✅ Biometría (próximamente con Capacitor plugins)
+
+#### Próximos Pasos de Autenticación
+
+- [ ] Implementar autenticación biométrica (Face ID/Touch ID)
+- [ ] Añadir MFA (Multi-Factor Authentication)
+- [ ] Sesiones de dispositivo múltiple
+- [ ] Registro con número de teléfono (SMS OTP)
+- [ ] Social login adicional (Apple, Facebook)
+
+#### Prueba del Sistema
+
+Para probar el sistema de autenticación:
+
+1. Inicia el servidor: `npm run dev`
+2. Ve a `http://localhost:3000`
+3. Haz clic en "Comenzar Gratis" o "Iniciar Sesión"
+4. Regístrate con un email (si email verification está desactivado, accederás inmediatamente)
+5. Completa el onboarding
+6. Accede al dashboard
+
+**Nota**: En desarrollo local, la verificación de email puede estar desactivada. Verifica la configuración en Supabase Dashboard > Authentication > Settings > Email.
+
+---
+
+## 0.1) Sistema de Invitaciones de Mensajeros (IMPLEMENTADO)
+
+### Descripción General
+
+El sistema permite a los negocios invitar mensajeros mediante códigos únicos de invitación. Los mensajeros pueden unirse a un negocio ingresando el código durante el proceso de onboarding.
+
+### Características Implementadas
+
+#### 1. Generación de Códigos de Invitación ✅
+
+- Los negocios pueden generar códigos únicos de 8 caracteres (alfanuméricos)
+- Cada código tiene una expiración de 7 días por defecto
+- Los códigos son únicos y no se pueden duplicar
+- Función SQL: `generate_invitation_code()`
+
+#### 2. Creación de Invitaciones ✅
+
+- Los miembros del negocio pueden crear invitaciones desde el dashboard
+- Opcionalmente pueden especificar nombre y email del mensajero
+- Las invitaciones se almacenan con estado `pending`
+- Endpoint: `POST /api/couriers/invite`
+
+**Parámetros:**
+
+```json
+{
+  "businessId": "uuid",
+  "courierEmail": "email@example.com", // opcional
+  "courierName": "Nombre Mensajero" // opcional
+}
+```
+
+#### 3. Validación de Códigos ✅
+
+- Los mensajeros pueden validar códigos antes de aceptarlos
+- Verifica que el código sea válido, esté pendiente y no haya expirado
+- Muestra información del negocio al que se están uniendo
+- Endpoint: `POST /api/couriers/validate`
+
+**Parámetros:**
+
+```json
+{
+  "invitationCode": "ABC12345"
+}
+```
+
+**Respuesta:**
+
+```json
+{
+  "valid": true,
+  "invitation": {
+    "id": "uuid",
+    "business_id": "uuid",
+    "invitation_code": "ABC12345",
+    "courier_name": "Nombre Mensajero",
+    "courier_email": "email@example.com",
+    "expires_at": "2024-01-15T00:00:00Z",
+    "businesses": {
+      "id": "uuid",
+      "name": "Nombre del Negocio"
+    }
+  }
+}
+```
+
+#### 4. Aceptación de Invitaciones ✅
+
+- Los mensajeros pueden aceptar invitaciones durante el onboarding
+- Crea automáticamente el registro de mensajero en la base de datos
+- Marca la invitación como `accepted`
+- Previene duplicados (no permite ser mensajero dos veces del mismo negocio)
+- Endpoint: `POST /api/couriers/accept`
+
+**Parámetros:**
+
+```json
+{
+  "invitationCode": "ABC12345"
+}
+```
+
+**Función SQL:** `accept_courier_invitation(p_invitation_code, p_user_id)`
+
+#### 5. Gestión de Invitaciones en el Dashboard ✅
+
+- Los negocios pueden ver todas sus invitaciones creadas
+- Visualización de estado: `pending`, `accepted`, `expired`, `cancelled`
+- Filtrado y búsqueda de invitaciones
+- Página: `/dashboard/couriers`
+
+### Flujo Completo de Invitación
+
+#### Para el Negocio:
+
+1. **Crear Invitación:**
+
+   - Ir a `/dashboard/couriers`
+   - Hacer clic en "Invitar Mensajero"
+   - Opcionalmente ingresar nombre y email del mensajero
+   - Generar código de invitación
+   - Compartir el código con el mensajero
+
+2. **Gestionar Invitaciones:**
+   - Ver lista de invitaciones creadas
+   - Ver estado de cada invitación
+   - Ver mensajeros que han aceptado
+
+#### Para el Mensajero:
+
+1. **Registrarse:**
+
+   - Ir a `/auth/register`
+   - Crear cuenta con email y contraseña
+   - Verificar email (si está habilitado)
+
+2. **Onboarding:**
+   - Seleccionar rol "Mensajero"
+   - Ingresar código de invitación recibido
+   - Validar código (ver información del negocio)
+   - Aceptar invitación
+   - Redirección automática al dashboard
+
+### Estructura de Base de Datos
+
+**Tabla: `courier_invitations`**
+
+```sql
+create table public.courier_invitations (
+  id uuid primary key default gen_random_uuid(),
+  business_id uuid not null references public.businesses(id) on delete cascade,
+  created_by uuid not null references auth.users(id) on delete cascade,
+  invitation_code text not null unique,
+  courier_email text,
+  courier_name text,
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'expired', 'cancelled')),
+  expires_at timestamptz not null default (now() + interval '7 days'),
+  accepted_by uuid references auth.users(id) on delete set null,
+  accepted_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+```
+
+### Políticas RLS (Row Level Security)
+
+- **Negocios:** Pueden ver y crear invitaciones para su negocio
+- **Mensajeros:** Pueden validar cualquier invitación por código (autenticados)
+- **Público:** No tiene acceso
+
+### Funciones SQL Implementadas
+
+#### `generate_invitation_code()`
+
+Genera un código único de 8 caracteres alfanuméricos en mayúsculas.
+
+#### `accept_courier_invitation(p_invitation_code text, p_user_id uuid)`
+
+- Valida que el código sea válido y no haya expirado
+- Previene duplicados (no permite ser mensajero dos veces)
+- Crea el registro en `couriers` con los datos de la invitación
+- Marca la invitación como `accepted`
+- Retorna el `courier_id` creado
+
+### Endpoints API Implementados
+
+| Método | Endpoint                 | Descripción                     | Autenticación         |
+| ------ | ------------------------ | ------------------------------- | --------------------- |
+| POST   | `/api/couriers/invite`   | Crear nueva invitación          | Requerida (negocio)   |
+| POST   | `/api/couriers/validate` | Validar código de invitación    | Requerida             |
+| POST   | `/api/couriers/accept`   | Aceptar invitación              | Requerida (mensajero) |
+| GET    | `/api/couriers/invite`   | Listar invitaciones del negocio | Requerida (negocio)   |
+
+### Páginas UI Implementadas
+
+- **`/dashboard/couriers`** - Gestión de mensajeros e invitaciones (solo negocios)
+- **`/auth/onboarding`** - Flujo de onboarding con validación de código (mensajeros)
+
+### Seguridad
+
+- ✅ Códigos únicos generados criptográficamente
+- ✅ Expiración automática de invitaciones (7 días)
+- ✅ Validación de permisos (solo miembros del negocio pueden crear invitaciones)
+- ✅ Prevención de duplicados (no permite ser mensajero dos veces)
+- ✅ RLS protege acceso a invitaciones
+- ✅ Validación de estado y expiración antes de aceptar
+
+### Próximas Mejoras
+
+- [ ] Envío automático de emails con códigos de invitación
+- [ ] Notificaciones push cuando se acepta una invitación
+- [ ] Cancelación de invitaciones pendientes
+- [ ] Extensión de fecha de expiración
+- [ ] Límite de invitaciones por negocio
+- [ ] Historial completo de invitaciones aceptadas
+
+---
+
 ## 1) Especificaciones del sistema “Gestión de repartos”
 
 ### Roles
