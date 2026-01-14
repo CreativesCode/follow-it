@@ -23,7 +23,9 @@ export default function ResetPasswordPage() {
       title="Restablecer Contraseña"
       description="Ingresa tu nueva contraseña"
     >
-      {state?.error && <Alert variant="error">{state.error}</Alert>}
+      {state && !state.success && state.error && (
+        <Alert variant="error">{state.error}</Alert>
+      )}
       {state?.success && state?.message && (
         <Alert variant="success">{state.message}</Alert>
       )}
@@ -38,7 +40,7 @@ export default function ResetPasswordPage() {
           required
           autoComplete="new-password"
           hint="Mínimo 8 caracteres, una mayúscula, una minúscula y un número"
-          error={state?.fieldErrors?.password}
+          error={state && !state.success ? state.fieldErrors?.password : undefined}
         />
 
         <FormInput
@@ -49,7 +51,7 @@ export default function ResetPasswordPage() {
           placeholder="••••••••"
           required
           autoComplete="new-password"
-          error={state?.fieldErrors?.confirmPassword}
+          error={state && !state.success ? state.fieldErrors?.confirmPassword : undefined}
         />
 
         <Button type="submit" className="w-full" isLoading={isPending}>

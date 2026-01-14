@@ -24,7 +24,9 @@ export default function RegisterPage() {
       title="Crear Cuenta"
       description="Comienza a gestionar tus repartos hoy mismo"
     >
-      {state?.error && <Alert variant="error">{state.error}</Alert>}
+      {state && !state.success && state.error && (
+        <Alert variant="error">{state.error}</Alert>
+      )}
       {state?.success && state?.message && (
         <Alert variant="success">{state.message}</Alert>
       )}
@@ -38,7 +40,7 @@ export default function RegisterPage() {
           placeholder="Juan Pérez"
           required
           autoComplete="name"
-          error={state?.fieldErrors?.fullName}
+          error={state && !state.success ? state.fieldErrors?.fullName : undefined}
         />
 
         <FormInput
@@ -49,7 +51,7 @@ export default function RegisterPage() {
           placeholder="tu@email.com"
           required
           autoComplete="email"
-          error={state?.fieldErrors?.email}
+          error={state && !state.success ? state.fieldErrors?.email : undefined}
         />
 
         <FormInput
@@ -61,7 +63,7 @@ export default function RegisterPage() {
           required
           autoComplete="new-password"
           hint="Mínimo 8 caracteres, una mayúscula, una minúscula y un número"
-          error={state?.fieldErrors?.password}
+          error={state && !state.success ? state.fieldErrors?.password : undefined}
         />
 
         <FormInput
@@ -72,7 +74,7 @@ export default function RegisterPage() {
           placeholder="••••••••"
           required
           autoComplete="new-password"
-          error={state?.fieldErrors?.confirmPassword}
+          error={state && !state.success ? state.fieldErrors?.confirmPassword : undefined}
         />
 
         <div className="flex items-start">

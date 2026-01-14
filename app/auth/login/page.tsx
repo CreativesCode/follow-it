@@ -25,7 +25,9 @@ export default function LoginPage() {
       title="Iniciar Sesión"
       description="Accede a tu cuenta para gestionar tus repartos"
     >
-      {state?.error && <Alert variant="error">{state.error}</Alert>}
+      {state && !state.success && state.error && (
+        <Alert variant="error">{state.error}</Alert>
+      )}
       {state?.success && state?.message && (
         <Alert variant="success">{state.message}</Alert>
       )}
@@ -39,7 +41,7 @@ export default function LoginPage() {
           placeholder="tu@email.com"
           required
           autoComplete="email"
-          error={state?.fieldErrors?.email}
+          error={state && !state.success ? state.fieldErrors?.email : undefined}
         />
 
         <FormInput
@@ -50,7 +52,7 @@ export default function LoginPage() {
           placeholder="••••••••"
           required
           autoComplete="current-password"
-          error={state?.fieldErrors?.password}
+          error={state && !state.success ? state.fieldErrors?.password : undefined}
         />
 
         <div className="flex items-center justify-between text-sm">
