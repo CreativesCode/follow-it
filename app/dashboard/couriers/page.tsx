@@ -1,54 +1,98 @@
-import { requireAuth, getUserRole } from "@/lib/utils/auth";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+"use client";
+
+// Esta página se convierte en Client Component para compatibilidad con exportación estática
+// En Capacitor, la autenticación se maneja del lado del cliente
+import { useUser } from "@/lib/hooks/useUser";
+import { useUserRole } from "@/lib/hooks/useUserRole";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import CouriersPageClient from "./CouriersPageClient";
 
-export default async function CouriersPage() {
-  const user = await requireAuth();
-  const role = await getUserRole(user.id);
+export default function CouriersPage() {
+  const router = useRouter();
+  const { user, loading: userLoading } = useUser();
+  const { type: roleType, loading: roleLoading } = useUserRole();
+  const [businessId, setBusinessId] = useState<string | null>(null);
+  const [businessName, setBusinessName] = useState<string>("");
+  const [couriers, setCouriers] = useState<any[]>([]);
+  const [invitations, setInvitations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Only business users can access this page
-  if (role.type !== "business") {
-    redirect("/dashboard");
+  useEffect(() => {
+    if (userLoading || roleLoading) return;
+
+    if (!user) {
+      router.replace("/auth/login");
+      return;
+    }
+
+    if (roleType !== "business") {
+      router.replace("/dashboard");
+      return;
+    }
+
+    // Load business data
+    const loadData = async () => {
+      const supabase = createClient();
+
+      // Get business info
+      const { data: businessMember } = await supabase
+        .from("business_members")
+        .select("business_id, businesses:business_id(id, name)")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!businessMember || !businessMember.businesses) {
+        router.replace("/dashboard");
+        return;
+      }
+
+      const bid = businessMember.business_id;
+      const bname = (businessMember.businesses as any).name;
+      setBusinessId(bid);
+      setBusinessName(bname);
+
+      // Get couriers for this business
+      const { data: couriersData } = await supabase
+        .from("couriers")
+        .select("*")
+        .eq("business_id", bid)
+        .order("created_at", { ascending: false });
+
+      // Get invitations for this business
+      const { data: invitationsData } = await supabase
+        .from("courier_invitations")
+        .select("*")
+        .eq("business_id", bid)
+        .order("created_at", { ascending: false });
+
+      setCouriers(couriersData || []);
+      setInvitations(invitationsData || []);
+      setLoading(false);
+    };
+
+    loadData();
+  }, [user, roleType, userLoading, roleLoading, router]);
+
+  if (userLoading || roleLoading || loading || !businessId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
   }
-
-  const supabase = await createClient();
-
-  // Get business info
-  const { data: businessMember } = await supabase
-    .from("business_members")
-    .select("business_id, businesses:business_id(id, name)")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!businessMember || !businessMember.businesses) {
-    redirect("/dashboard");
-  }
-
-  const businessId = businessMember.business_id;
-  const businessName = (businessMember.businesses as any).name;
-
-  // Get couriers for this business
-  const { data: couriers } = await supabase
-    .from("couriers")
-    .select("*")
-    .eq("business_id", businessId)
-    .order("created_at", { ascending: false });
-
-  // Get invitations for this business
-  const { data: invitations } = await supabase
-    .from("courier_invitations")
-    .select("*")
-    .eq("business_id", businessId)
-    .order("created_at", { ascending: false });
 
   return (
     <CouriersPageClient
-      user={user}
+      user={user!}
       businessId={businessId}
       businessName={businessName}
-      initialCouriers={couriers || []}
-      initialInvitations={invitations || []}
+      initialCouriers={couriers}
+      initialInvitations={invitations}
     />
   );
 }

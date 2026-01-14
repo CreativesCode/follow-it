@@ -1,12 +1,12 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
-import { resetPassword } from "@/lib/auth/actions";
-import { AuthCard } from "@/components/ui/AuthCard";
-import { FormInput } from "@/components/ui/FormInput";
-import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { AuthCard } from "@/components/ui/AuthCard";
+import { Button } from "@/components/ui/Button";
+import { FormInput } from "@/components/ui/FormInput";
+import { resetPassword } from "@/lib/auth/client-actions";
 import { useRouter } from "next/navigation";
+import { useActionState, useEffect } from "react";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -40,7 +40,9 @@ export default function ResetPasswordPage() {
           required
           autoComplete="new-password"
           hint="Mínimo 8 caracteres, una mayúscula, una minúscula y un número"
-          error={state && !state.success ? state.fieldErrors?.password : undefined}
+          error={
+            state && !state.success ? state.fieldErrors?.password : undefined
+          }
         />
 
         <FormInput
@@ -51,7 +53,11 @@ export default function ResetPasswordPage() {
           placeholder="••••••••"
           required
           autoComplete="new-password"
-          error={state && !state.success ? state.fieldErrors?.confirmPassword : undefined}
+          error={
+            state && !state.success
+              ? state.fieldErrors?.confirmPassword
+              : undefined
+          }
         />
 
         <Button type="submit" className="w-full" isLoading={isPending}>

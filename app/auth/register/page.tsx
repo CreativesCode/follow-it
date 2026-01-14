@@ -1,13 +1,13 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
-import { register } from "@/lib/auth/actions";
-import { AuthCard } from "@/components/ui/AuthCard";
-import { FormInput } from "@/components/ui/FormInput";
-import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { AuthCard } from "@/components/ui/AuthCard";
+import { Button } from "@/components/ui/Button";
+import { FormInput } from "@/components/ui/FormInput";
+import { register } from "@/lib/auth/client-actions";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useActionState, useEffect } from "react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -40,7 +40,9 @@ export default function RegisterPage() {
           placeholder="Juan Pérez"
           required
           autoComplete="name"
-          error={state && !state.success ? state.fieldErrors?.fullName : undefined}
+          error={
+            state && !state.success ? state.fieldErrors?.fullName : undefined
+          }
         />
 
         <FormInput
@@ -63,7 +65,9 @@ export default function RegisterPage() {
           required
           autoComplete="new-password"
           hint="Mínimo 8 caracteres, una mayúscula, una minúscula y un número"
-          error={state && !state.success ? state.fieldErrors?.password : undefined}
+          error={
+            state && !state.success ? state.fieldErrors?.password : undefined
+          }
         />
 
         <FormInput
@@ -74,7 +78,11 @@ export default function RegisterPage() {
           placeholder="••••••••"
           required
           autoComplete="new-password"
-          error={state && !state.success ? state.fieldErrors?.confirmPassword : undefined}
+          error={
+            state && !state.success
+              ? state.fieldErrors?.confirmPassword
+              : undefined
+          }
         />
 
         <div className="flex items-start">

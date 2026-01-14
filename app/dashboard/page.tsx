@@ -1,15 +1,40 @@
-import { requireAuth, getUserRole } from "@/lib/utils/auth";
-import { logout } from "@/lib/auth/actions";
+"use client";
+
 import { Button } from "@/components/ui/Button";
-import { redirect } from "next/navigation";
+import { logout } from "@/lib/auth/client-actions";
+import { useUser } from "@/lib/hooks/useUser";
+import { useUserRole } from "@/lib/hooks/useUserRole";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
-export default async function DashboardPage() {
-  const user = await requireAuth();
-  const role = await getUserRole(user.id);
+export default function DashboardPage() {
+  const router = useRouter();
+  const { user, loading: userLoading } = useUser();
+  const { type: roleType, loading: roleLoading } = useUserRole();
 
-  // If user has no role, redirect to onboarding
-  if (!role.type) {
-    redirect("/auth/onboarding");
+  useEffect(() => {
+    if (userLoading || roleLoading) return;
+
+    if (!user) {
+      router.replace("/auth/login");
+      return;
+    }
+
+    // If user has no role, redirect to onboarding
+    if (!roleType) {
+      router.replace("/auth/onboarding");
+    }
+  }, [user, roleType, userLoading, roleLoading, router]);
+
+  if (userLoading || roleLoading || !user || !roleType) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -21,7 +46,7 @@ export default async function DashboardPage() {
             <div className="flex items-center">
               <h1 className="text-2xl font-bold text-primary-600">Follow It</h1>
               <span className="ml-3 px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded">
-                {role.type === "business" ? "Negocio" : "Mensajero"}
+                {roleType === "business" ? "Negocio" : "Mensajero"}
               </span>
             </div>
             <div className="flex items-center space-x-4">
@@ -50,7 +75,7 @@ export default async function DashboardPage() {
               ¡Bienvenido al Dashboard!
             </h2>
             <p className="text-gray-600">
-              {role.type === "business"
+              {roleType === "business"
                 ? "Aquí podrás gestionar tus repartos, asignar mensajeros y monitorear entregas en tiempo real."
                 : "Aquí podrás ver tus asignaciones, actualizar estados y subir comprobantes de entrega."}
             </p>
@@ -128,9 +153,7 @@ export default async function DashboardPage() {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">
-                    En Camino
-                  </p>
+                  <p className="text-sm font-medium text-gray-500">En Camino</p>
                   <p className="text-2xl font-bold text-gray-900">0</p>
                 </div>
               </div>
@@ -160,7 +183,7 @@ export default async function DashboardPage() {
                 Estamos trabajando en las funcionalidades completas del
                 dashboard.
               </p>
-              {role.type === "business" && (
+              {roleType === "business" && (
                 <div className="mt-6">
                   <p className="text-sm text-gray-600 mb-4">
                     Funciones disponibles:
@@ -267,7 +290,7 @@ export default async function DashboardPage() {
                   </ul>
                 </div>
               )}
-              {role.type === "courier" && (
+              {roleType === "courier" && (
                 <div className="mt-6">
                   <p className="text-sm text-gray-600 mb-4">
                     Próximamente podrás:

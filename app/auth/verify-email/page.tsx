@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { resendVerificationEmail } from "@/lib/auth/actions";
+import { Alert } from "@/components/ui/Alert";
 import { AuthCard } from "@/components/ui/AuthCard";
 import { Button } from "@/components/ui/Button";
-import { Alert } from "@/components/ui/Alert";
+import { resendVerificationEmail } from "@/lib/auth/client-actions";
 import Link from "next/link";
+import { useState } from "react";
 
 export default function VerifyEmailPage() {
   const [message, setMessage] = useState<{
@@ -62,11 +62,7 @@ export default function VerifyEmailPage() {
           </p>
         </div>
 
-        {message && (
-          <Alert variant={message.type}>
-            {message.text}
-          </Alert>
-        )}
+        {message && <Alert variant={message.type}>{message.text}</Alert>}
 
         <Button
           onClick={handleResend}

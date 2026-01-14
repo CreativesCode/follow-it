@@ -1,14 +1,14 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
-import { login } from "@/lib/auth/actions";
-import { AuthCard } from "@/components/ui/AuthCard";
-import { FormInput } from "@/components/ui/FormInput";
-import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { AuthCard } from "@/components/ui/AuthCard";
+import { Button } from "@/components/ui/Button";
 import { Divider } from "@/components/ui/Divider";
+import { FormInput } from "@/components/ui/FormInput";
+import { login } from "@/lib/auth/client-actions";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useActionState, useEffect } from "react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -52,7 +52,9 @@ export default function LoginPage() {
           placeholder="••••••••"
           required
           autoComplete="current-password"
-          error={state && !state.success ? state.fieldErrors?.password : undefined}
+          error={
+            state && !state.success ? state.fieldErrors?.password : undefined
+          }
         />
 
         <div className="flex items-center justify-between text-sm">

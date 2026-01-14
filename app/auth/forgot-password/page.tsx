@@ -4,7 +4,7 @@ import { Alert } from "@/components/ui/Alert";
 import { AuthCard } from "@/components/ui/AuthCard";
 import { Button } from "@/components/ui/Button";
 import { FormInput } from "@/components/ui/FormInput";
-import { forgotPassword } from "@/lib/auth/actions";
+import { forgotPassword } from "@/lib/auth/client-actions";
 import Link from "next/link";
 import { useActionState } from "react";
 

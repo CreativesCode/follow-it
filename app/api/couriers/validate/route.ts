@@ -1,6 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+// Para exportación estática: estas rutas se excluyen del build
+// En Capacitor, estas operaciones deben hacerse directamente con Supabase desde el cliente
+export const dynamic = "force-static";
+export const revalidate = false;
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();

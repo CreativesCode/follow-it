@@ -3,7 +3,7 @@
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { FormInput } from "@/components/ui/FormInput";
-import { logout } from "@/lib/auth/actions";
+import { logout } from "@/lib/auth/client-actions";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -390,7 +390,8 @@ export default function CouriersPageClient({
                           </button>
                           {getStatusBadge(invitation.status)}
                         </div>
-                        {(invitation.courier_name || invitation.courier_email) && (
+                        {(invitation.courier_name ||
+                          invitation.courier_email) && (
                           <div className="text-sm text-gray-600">
                             {invitation.courier_name && (
                               <p>Para: {invitation.courier_name}</p>
@@ -403,9 +404,7 @@ export default function CouriersPageClient({
                         <div className="text-xs text-gray-500 mt-2">
                           <p>Creada: {formatDate(invitation.created_at)}</p>
                           {invitation.status === "pending" && (
-                            <p>
-                              Expira: {formatDate(invitation.expires_at)}
-                            </p>
+                            <p>Expira: {formatDate(invitation.expires_at)}</p>
                           )}
                           {invitation.accepted_at && (
                             <p>

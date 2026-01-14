@@ -1,18 +1,23 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
+// Para exportación estática: estas rutas se excluyen del build
+// En Capacitor, estas operaciones deben hacerse directamente con Supabase desde el cliente
+export const dynamic = "force-static";
+export const revalidate = false;
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
-    
+
     // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
     if (userError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { courierEmail, courierName, businessId } = await request.json();
@@ -33,8 +38,9 @@ export async function POST(request: Request) {
     }
 
     // Generate invitation code
-    const { data: codeData, error: codeError } = await supabase
-      .rpc("generate_invitation_code");
+    const { data: codeData, error: codeError } = await supabase.rpc(
+      "generate_invitation_code"
+    );
 
     if (codeError) {
       throw codeError;
@@ -76,15 +82,15 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
-    
+
     // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
     if (userError || !user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
