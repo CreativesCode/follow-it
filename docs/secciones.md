@@ -7,9 +7,10 @@
 
 ## Índice
 
+0. **[⚠️ LECTURA OBLIGATORIA: Estructura y Patrón de Implementación](#-lectura-obligatoria-estructura-y-patrón-de-implementación)** ⭐
 1. [Base Implementada (No Rehacer)](#1-base-implementada)
 2. [Estructura de Carpetas Propuesta](#2-estructura-de-carpetas)
-3. [Módulo: Pedidos (Orders)](#3-módulo-pedidos)
+3. [Módulo: Pedidos (Orders)](#3-módulo-pedidos-orders-✅-completado) ✅
 4. [Módulo: Asignación de Mensajeros](#4-módulo-asignación)
 5. [Módulo: Transiciones de Estado](#5-módulo-transiciones)
 6. [Módulo: Comprobantes de Entrega (Proofs)](#6-módulo-proofs)
@@ -21,6 +22,220 @@
 12. [Hooks Personalizados](#12-hooks)
 13. [Validaciones (Zod Schemas)](#13-validaciones)
 14. [Edge Functions Detalladas](#14-edge-functions)
+
+---
+
+## ⚠️ LECTURA OBLIGATORIA: Estructura y Patrón de Implementación
+
+> **IMPORTANTE**: Antes de comenzar cualquier módulo nuevo, lee esta sección completa.
+> Esta es la estructura base que debes seguir para mantener consistencia en el proyecto.
+
+### 📋 Patrón de Implementación (Basado en Módulo 3: Pedidos)
+
+Cada módulo debe seguir esta estructura y orden de implementación:
+
+#### 1. **Tipos TypeScript** (`types/[modulo].ts`)
+
+- Tipos base de la tabla (si aplica)
+- Tipos extendidos con relaciones
+- Tipos para formularios
+- Tipos para filtros/búsqueda
+- Configuraciones de estados (si aplica) con metadata UI
+
+#### 2. **Constantes** (`lib/constants/[modulo].ts`)
+
+- Estados posibles
+- Transiciones permitidas
+- Reglas de negocio
+- Funciones helper de validación
+
+#### 3. **Validaciones Zod** (`lib/validations/[modulo].ts`)
+
+- Schema para crear
+- Schema para actualizar
+- Schema para filtros
+- Exportar tipos inferidos
+
+#### 4. **API Routes** (`app/api/[modulo]/route.ts`)
+
+- `GET` - Listar con filtros y paginación
+- `POST` - Crear nuevo
+- `export const dynamic = 'force-dynamic'` (obligatorio)
+- Validación de permisos (requireBusinessRole/requireCourierRole)
+- Manejo de errores con tipos correctos (no `any`)
+
+#### 5. **API Routes Individuales** (`app/api/[modulo]/[id]/route.ts`)
+
+- `GET` - Obtener individual
+- `PATCH` - Actualizar
+- **IMPORTANTE**: `params` es Promise en Next.js 15+
+  ```typescript
+  { params }: { params: Promise<{ id: string }> }
+  const { id } = await params;
+  ```
+
+#### 6. **Hooks Personalizados** (`lib/hooks/use[Modulo].ts`)
+
+- Hook para lista: `use[Modulo]s()`
+- Hook para individual: `use[Modulo]()`
+- Estados: loading, error, data
+- Funciones: refetch, create, update, delete
+
+#### 7. **Componentes UI** (`components/[modulo]/`)
+
+- Componentes de presentación (Card, Badge, etc.)
+- Componentes de formulario (Form, Filters)
+- Modales (DetailModal, CreateModal)
+- **Usar clases base** de `lib/utils/formStyles.ts`
+
+#### 8. **Páginas** (`app/dashboard/[modulo]/page.tsx`)
+
+- Server Component que valida permisos
+- Cliente Component con lógica
+- **Usar modales** en lugar de rutas dinámicas (compatible con Capacitor)
+- Responsive y mobile-first
+
+### 🎯 Reglas de Implementación
+
+#### ✅ HACER:
+
+- ✅ Usar modales para detalles/edición (no rutas dinámicas `[id]`)
+- ✅ Usar query params si necesitas navegación: `?id=xxx`
+- ✅ Siempre `export const dynamic = 'force-dynamic'` en API routes
+- ✅ `params` es Promise: usar `await params` o `const { id } = await params`
+- ✅ Validar permisos server-side antes de cualquier operación
+- ✅ Usar clases base de formularios (`formInputBase`, `formTextareaBase`)
+- ✅ Manejar errores con tipos correctos (no `any`, usar `unknown`)
+- ✅ Mobile-first: responsive, touch-friendly, safe areas
+- ✅ Estados de loading, error, empty state
+- ✅ Validación con Zod en cliente y servidor
+
+#### ❌ NO HACER:
+
+- ❌ Rutas dinámicas `[id]` (no compatible con exportación estática)
+- ❌ Usar `any` en tipos TypeScript
+- ❌ Acceder a `params.id` directamente (es Promise)
+- ❌ Duplicar lógica de validación (usar Zod schemas)
+- ❌ Olvidar `export const dynamic` en API routes
+- ❌ Crear formularios sin usar clases base
+- ❌ Ignorar estados de loading/error
+
+### 📁 Estructura de Archivos por Módulo
+
+```
+types/
+  └── [modulo].ts              # Tipos TypeScript
+
+lib/
+  ├── constants/
+  │   └── [modulo].ts          # Constantes y reglas
+  ├── validations/
+  │   └── [modulo].ts          # Schemas Zod
+  └── hooks/
+      ├── use[Modulo]s.ts      # Hook para lista
+      └── use[Modulo].ts       # Hook para individual
+
+app/
+  └── api/
+      └── [modulo]/
+          ├── route.ts         # GET (listar), POST (crear)
+          └── [id]/
+              └── route.ts     # GET (individual), PATCH (actualizar)
+
+components/
+  └── [modulo]/
+      ├── [Modulo]Card.tsx     # Card de presentación
+      ├── [Modulo]Form.tsx     # Formulario crear/editar
+      ├── [Modulo]Filters.tsx  # Filtros de búsqueda
+      └── [Modulo]DetailModal.tsx # Modal detalles/edición
+
+app/
+  └── dashboard/
+      └── [modulo]/
+          ├── page.tsx         # Server component
+          └── [Modulo]PageClient.tsx # Client component
+```
+
+### 🔄 Flujo de Datos Típico
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    FLUJO DE DATOS                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  UI Component                                                │
+│       │                                                     │
+│       ├── use[Modulo]s() hook                               │
+│       │        │                                            │
+│       │        ▼                                            │
+│       │   GET /api/[modulo]                                 │
+│       │        │                                            │
+│       │        ▼                                            │
+│       │   requireBusinessRole()                             │
+│       │        │                                            │
+│       │        ▼                                            │
+│       │   Supabase Query (con RLS)                          │
+│       │        │                                            │
+│       │        ▼                                            │
+│       │   Response JSON                                     │
+│       │        │                                            │
+│       │        ▼                                            │
+│       │   Hook actualiza estado                            │
+│       │        │                                            │
+│       ▼        ▼                                            │
+│  UI se re-renderiza                                         │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 📝 Checklist por Módulo
+
+Antes de marcar un módulo como completado, verifica:
+
+- [ ] Tipos TypeScript creados y exportados
+- [ ] Constantes y reglas de negocio definidas
+- [ ] Validaciones Zod implementadas
+- [ ] API Routes con `dynamic = 'force-dynamic'`
+- [ ] API Routes usan `await params` (Next.js 15+)
+- [ ] Hooks personalizados funcionando
+- [ ] Componentes UI usando clases base
+- [ ] Modales en lugar de rutas dinámicas
+- [ ] Responsive y mobile-friendly
+- [ ] Estados de loading, error, empty
+- [ ] Validación de permisos server-side
+- [ ] Manejo de errores sin `any`
+- [ ] Documentación actualizada en `docs/secciones.md`
+
+### 🎨 Clases Base de Formularios (Reutilizar)
+
+**Archivo**: `lib/utils/formStyles.ts`
+
+```typescript
+// Usar estas clases en TODOS los formularios
+formInputBase; // Inputs de texto
+formTextareaBase; // Textareas
+formSelectBase; // Selects
+formLabelBase; // Labels
+formInputError; // Input con error
+formTextareaError; // Textarea con error
+formErrorBase; // Mensajes de error
+formHintBase; // Mensajes de hint
+```
+
+### 📱 Optimizaciones Móviles (Aplicar siempre)
+
+- Clase `touch-manipulation` en botones/interactivos
+- Safe area insets para dispositivos con notch
+- Tamaños mínimos de touch target (44px)
+- Padding responsive (`p-4 md:p-6`)
+- Grid responsive (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`)
+- Texto responsive (`text-sm md:text-base`)
+
+### 🔍 Ejemplo Real: Módulo 3 (Pedidos)
+
+**Referencia completa**: Ver sección [3. Módulo: Pedidos (Orders)](#3-módulo-pedidos-✅-completado)
+
+Este módulo implementa todos los patrones descritos arriba y sirve como **plantilla base** para los demás módulos.
 
 ---
 
@@ -185,7 +400,18 @@ types/
 
 ---
 
-## 3. Módulo: Pedidos (Orders)
+## 3. Módulo: Pedidos (Orders) ✅ COMPLETADO
+
+> **Estado**: Implementado completamente
+>
+> - ✅ CRUD completo de pedidos
+> - ✅ Lista con filtros y paginación
+> - ✅ Crear/Editar pedidos en modales
+> - ✅ Vista de detalles en modal
+> - ✅ Validaciones con Zod
+> - ✅ Hooks personalizados
+> - ✅ Componentes UI reutilizables
+> - ✅ Optimizado para móvil (Capacitor)
 
 ### 3.1 Modelo de Datos
 
@@ -5236,14 +5462,16 @@ supabase/functions/
 
 ### Orden sugerido de desarrollo:
 
-1. **Fase 1: Core Orders (1-2 semanas)**
+1. **Fase 1: Core Orders (1-2 semanas)** ✅ COMPLETADO
 
-   - [ ] Tipos y validaciones
-   - [ ] API Routes CRUD
-   - [ ] Hook useOrders
-   - [ ] Componentes: OrderCard, OrderStatusBadge, OrderFilters
-   - [ ] Página lista de pedidos
-   - [ ] Formulario crear pedido
+   - [x] Tipos y validaciones
+   - [x] API Routes CRUD
+   - [x] Hook useOrders
+   - [x] Componentes: OrderCard, OrderStatusBadge, OrderFilters
+   - [x] Página lista de pedidos
+   - [x] Formulario crear pedido
+   - [x] Modal de detalles y edición
+   - [x] Optimización móvil (responsive, touch-friendly)
 
 2. **Fase 2: Asignación (3-5 días)**
 

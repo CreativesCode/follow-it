@@ -4,32 +4,50 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { useOrder } from "@/lib/hooks/useOrder";
 import type { OrderFormData } from "@/types/orders";
-import { Edit, X } from "lucide-react";
+import { Edit, UserPlus, X } from "lucide-react";
 import { useState } from "react";
+import { AssignOrderModal } from "./AssignOrderModal";
 import { OrderForm } from "./OrderForm";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 
 type Props = {
   orderId: string | null;
+  businessId: string;
   onClose: () => void;
+  onOrderUpdate?: () => void;
 };
 
-export function OrderDetailModal({ orderId, onClose }: Props) {
-  const { order, loading, error, updateOrder } = useOrder(orderId || "");
+export function OrderDetailModal({
+  orderId,
+  businessId,
+  onClose,
+  onOrderUpdate,
+}: Props) {
+  const { order, loading, error, updateOrder, refetch } = useOrder(
+    orderId || ""
+  );
   const [isEditing, setIsEditing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
 
   const handleUpdate = async (data: OrderFormData) => {
     setSaveError(null);
     const result = await updateOrder(data);
     if (result.order) {
       setIsEditing(false);
+      onOrderUpdate?.();
       // Opcional: cerrar modal después de guardar exitosamente
       // onClose();
     } else {
       setSaveError(result.error || "Error al actualizar pedido");
     }
     return result;
+  };
+
+  const handleAssignSuccess = async () => {
+    await refetch();
+    onOrderUpdate?.();
+    setShowAssignModal(false);
   };
 
   if (!orderId) {
@@ -83,10 +101,22 @@ export function OrderDetailModal({ orderId, onClose }: Props) {
             <div className="flex items-center gap-3">
               <OrderStatusBadge status={order.status} size="md" />
               {!["delivered", "canceled"].includes(order.status) && (
-                <Button variant="outline" onClick={() => setIsEditing(true)}>
-                  <Edit className="w-4 h-4 mr-2" />
-                  Editar
-                </Button>
+                <>
+                  {(order.status === "pending" ||
+                    order.status === "assigned") && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowAssignModal(true)}
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      {order.status === "assigned" ? "Cambiar" : "Asignar"}
+                    </Button>
+                  )}
+                  <Button variant="outline" onClick={() => setIsEditing(true)}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Editar
+                  </Button>
+                </>
               )}
             </div>
           )}
@@ -221,6 +251,16 @@ export function OrderDetailModal({ orderId, onClose }: Props) {
           )}
         </div>
       </div>
+
+      {/* Modal de asignación */}
+      {order && showAssignModal && (
+        <AssignOrderModal
+          order={order}
+          businessId={businessId}
+          onClose={() => setShowAssignModal(false)}
+          onSuccess={handleAssignSuccess}
+        />
+      )}
     </div>
   );
 }

@@ -17,7 +17,7 @@ type Props = {
 
 type ViewMode = "list" | "kanban";
 
-export function OrdersPageClient({}: Props) {
+export function OrdersPageClient({ businessId }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -30,6 +30,7 @@ export function OrdersPageClient({}: Props) {
     filters,
     setFilters,
     createOrder,
+    refetch,
   } = useOrders();
 
   const handleCreateOrder = async (data: OrderFormData) => {
@@ -178,7 +179,9 @@ export function OrdersPageClient({}: Props) {
         <OrderDetailModal
           key={selectedOrderId} // Key para resetear estado al cambiar orden
           orderId={selectedOrderId}
+          businessId={businessId}
           onClose={() => setSelectedOrderId(null)}
+          onOrderUpdate={refetch}
         />
       )}
     </div>
