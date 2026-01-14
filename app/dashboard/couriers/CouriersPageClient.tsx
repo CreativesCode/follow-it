@@ -1,10 +1,7 @@
 "use client";
-
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { FormInput } from "@/components/ui/FormInput";
-import { logout } from "@/lib/auth/client-actions";
-import Link from "next/link";
 import { useState } from "react";
 
 interface Courier {
@@ -37,9 +34,7 @@ interface CouriersPageClientProps {
 }
 
 export default function CouriersPageClient({
-  user,
   businessId,
-  businessName,
   initialCouriers,
   initialInvitations,
 }: CouriersPageClientProps) {
@@ -135,54 +130,23 @@ export default function CouriersPageClient({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <Link href="/dashboard">
-                <h1 className="text-2xl font-bold text-primary-600 hover:text-primary-700 transition-colors cursor-pointer">
-                  Follow It
-                </h1>
-              </Link>
-              <span className="text-gray-300">→</span>
-              <span className="text-lg font-medium text-primary-600">
-                Mensajeros
-              </span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">
-                  {user.user_metadata?.full_name || user.email}
-                </p>
-                <p className="text-xs text-gray-500">{businessName}</p>
-              </div>
-              <form action={logout}>
-                <Button type="submit" variant="outline" size="sm">
-                  Cerrar Sesión
-                </Button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="p-4 md:p-6 lg:p-8">
         <div className="space-y-6">
           {/* Header Section */}
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-primary-700">
+              <h2 className="text-xl md:text-2xl font-bold text-primary-700">
                 Gestión de Mensajeros
               </h2>
-              <p className="text-gray-600 mt-1">
+              <p className="text-sm md:text-base text-gray-600 mt-1">
                 Invita y gestiona a tu equipo de mensajeros
               </p>
             </div>
             <Button
               onClick={() => setShowInviteForm(!showInviteForm)}
               disabled={isCreatingInvitation}
+              className="w-full md:w-auto"
             >
               {showInviteForm ? "Cancelar" : "+ Invitar Mensajero"}
             </Button>
@@ -194,7 +158,7 @@ export default function CouriersPageClient({
 
           {/* Invite Form */}
           {showInviteForm && (
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-4 md:p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Crear Nueva Invitación
               </h3>
@@ -219,11 +183,12 @@ export default function CouriersPageClient({
                   onChange={(e) => setCourierEmail(e.target.value)}
                 />
 
-                <div className="flex space-x-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Button
                     onClick={createInvitation}
                     isLoading={isCreatingInvitation}
                     disabled={isCreatingInvitation}
+                    className="flex-1"
                   >
                     Generar Código de Invitación
                   </Button>
@@ -235,6 +200,7 @@ export default function CouriersPageClient({
                       setCourierEmail("");
                     }}
                     disabled={isCreatingInvitation}
+                    className="flex-1 sm:flex-initial"
                   >
                     Cancelar
                   </Button>
@@ -330,14 +296,14 @@ export default function CouriersPageClient({
 
           {/* Invitations */}
           <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
+            <div className="px-4 md:px-6 py-4 border-b border-gray-200">
+              <h3 className="text-base md:text-lg font-semibold text-gray-900">
                 Invitaciones ({invitations.length})
               </h3>
             </div>
             <div className="divide-y divide-gray-200">
               {invitations.length === 0 ? (
-                <div className="px-6 py-12 text-center">
+                <div className="px-4 md:px-6 py-12 text-center">
                   <svg
                     className="mx-auto h-12 w-12 text-gray-400"
                     fill="none"

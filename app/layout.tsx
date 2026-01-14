@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -15,6 +15,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Follow It - Gestión de Repartos",
   description: "Sistema de gestión de repartos con seguimiento en tiempo real",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover", // Para soportar safe areas en iOS
 };
 
 export default function RootLayout({

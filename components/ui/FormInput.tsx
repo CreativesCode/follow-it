@@ -1,6 +1,7 @@
 "use client";
 
 import { InputHTMLAttributes, forwardRef } from "react";
+import { formInputBase, formInputError, formLabelBase, formErrorBase, formHintBase } from "@/lib/utils/formStyles";
 
 interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -14,7 +15,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
       <div className="space-y-1">
         <label
           htmlFor={props.id || props.name}
-          className="block text-sm font-medium text-gray-700"
+          className={formLabelBase}
         >
           {label}
           {props.required && <span className="text-red-500 ml-1">*</span>}
@@ -22,18 +23,13 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
         <input
           ref={ref}
           className={`
-            w-full px-3 py-2 border rounded-lg
-            text-gray-900 bg-white
-            placeholder:text-gray-400 placeholder:opacity-100
-            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
-            disabled:bg-gray-100 disabled:cursor-not-allowed disabled:placeholder:text-gray-300 disabled:text-gray-500
-            ${error ? "border-red-500" : "border-gray-300"}
+            ${error ? formInputError : formInputBase}
             ${className}
           `}
           {...props}
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {hint && !error && <p className="text-sm text-gray-500">{hint}</p>}
+        {error && <p className={formErrorBase}>{error}</p>}
+        {hint && !error && <p className={formHintBase}>{hint}</p>}
       </div>
     );
   }

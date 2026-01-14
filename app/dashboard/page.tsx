@@ -1,7 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
-import { logout } from "@/lib/auth/client-actions";
 import { useUser } from "@/lib/hooks/useUser";
 import { useUserRole } from "@/lib/hooks/useUserRole";
 import { useRouter } from "next/navigation";
@@ -39,42 +37,15 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-primary-600">Follow It</h1>
-              <span className="ml-3 px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded">
-                {roleType === "business" ? "Negocio" : "Mensajero"}
-              </span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">
-                  {user.user_metadata?.full_name || user.email}
-                </p>
-                <p className="text-xs text-gray-500">{user.email}</p>
-              </div>
-              <form action={logout}>
-                <Button type="submit" variant="outline" size="sm">
-                  Cerrar Sesión
-                </Button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-6">
+      <main className="p-4 md:p-6 lg:p-8">
+        <div className="space-y-4 md:space-y-6">
           {/* Welcome Message */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-2xl font-bold text-primary-700 mb-2">
+          <div className="bg-white rounded-lg shadow p-4 md:p-6">
+            <h2 className="text-xl md:text-2xl font-bold text-primary-700 mb-2">
               ¡Bienvenido al Dashboard!
             </h2>
-            <p className="text-gray-600">
+            <p className="text-sm md:text-base text-gray-600">
               {roleType === "business"
                 ? "Aquí podrás gestionar tus repartos, asignar mensajeros y monitorear entregas en tiempo real."
                 : "Aquí podrás ver tus asignaciones, actualizar estados y subir comprobantes de entrega."}
@@ -82,12 +53,12 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg shadow p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            <div className="bg-white rounded-lg shadow p-4 md:p-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 bg-primary-100 rounded-lg p-3">
+                <div className="shrink-0 bg-primary-100 rounded-lg p-2 md:p-3">
                   <svg
-                    className="w-6 h-6 text-primary-500"
+                    className="w-5 h-5 md:w-6 md:h-6 text-primary-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -100,20 +71,22 @@ export default function DashboardPage() {
                     />
                   </svg>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">
+                <div className="ml-3 md:ml-4">
+                  <p className="text-xs md:text-sm font-medium text-gray-500">
                     Pedidos Hoy
                   </p>
-                  <p className="text-2xl font-bold text-gray-900">0</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-900">
+                    0
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-4 md:p-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 bg-secondary-100 rounded-lg p-3">
+                <div className="shrink-0 bg-secondary-100 rounded-lg p-2 md:p-3">
                   <svg
-                    className="w-6 h-6 text-secondary-500"
+                    className="w-5 h-5 md:w-6 md:h-6 text-secondary-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -126,20 +99,22 @@ export default function DashboardPage() {
                     />
                   </svg>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">
+                <div className="ml-3 md:ml-4">
+                  <p className="text-xs md:text-sm font-medium text-gray-500">
                     Entregados
                   </p>
-                  <p className="text-2xl font-bold text-gray-900">0</p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-900">
+                    0
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-lg shadow p-4 md:p-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 bg-yellow-100 rounded-lg p-3">
+                <div className="shrink-0 bg-yellow-100 rounded-lg p-2 md:p-3">
                   <svg
-                    className="w-6 h-6 text-yellow-600"
+                    className="w-5 h-5 md:w-6 md:h-6 text-yellow-600"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -152,16 +127,20 @@ export default function DashboardPage() {
                     />
                   </svg>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">En Camino</p>
-                  <p className="text-2xl font-bold text-gray-900">0</p>
+                <div className="ml-3 md:ml-4">
+                  <p className="text-xs md:text-sm font-medium text-gray-500">
+                    En Camino
+                  </p>
+                  <p className="text-xl md:text-2xl font-bold text-gray-900">
+                    0
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Coming Soon */}
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <div className="text-center py-12">
               <svg
                 className="mx-auto h-12 w-12 text-gray-400"
@@ -190,8 +169,44 @@ export default function DashboardPage() {
                   </p>
                   <div className="space-y-3 max-w-md mx-auto">
                     <a
+                      href="/dashboard/orders"
+                      className="flex items-center justify-between p-3 md:p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors group touch-manipulation"
+                    >
+                      <div className="flex items-center">
+                        <svg
+                          className="w-5 h-5 text-primary-500 mr-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                          />
+                        </svg>
+                        <span className="font-medium text-gray-900">
+                          Gestionar Pedidos
+                        </span>
+                      </div>
+                      <svg
+                        className="w-5 h-5 text-gray-400 group-hover:text-primary-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </a>
+                    <a
                       href="/dashboard/couriers"
-                      className="flex items-center justify-between p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors group"
+                      className="flex items-center justify-between p-3 md:p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors group touch-manipulation"
                     >
                       <div className="flex items-center">
                         <svg
@@ -233,7 +248,7 @@ export default function DashboardPage() {
                   <ul className="text-sm text-left max-w-md mx-auto space-y-2">
                     <li className="flex items-start">
                       <svg
-                        className="w-5 h-5 text-gray-400 mt-0.5 mr-2"
+                        className="w-5 h-5 text-green-500 mt-0.5 mr-2"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >
@@ -243,7 +258,12 @@ export default function DashboardPage() {
                           clipRule="evenodd"
                         />
                       </svg>
-                      Crear y gestionar pedidos
+                      <span className="line-through text-gray-400">
+                        Crear y gestionar pedidos
+                      </span>
+                      <span className="ml-2 text-green-600 font-medium">
+                        ✓ Disponible
+                      </span>
                     </li>
                     <li className="flex items-start">
                       <svg

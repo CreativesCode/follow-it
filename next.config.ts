@@ -5,8 +5,10 @@ const nextConfig: NextConfig = {
   // Las Edge Functions de Supabase están excluidas en tsconfig.json
   // Estas funciones usan Deno runtime, no Node.js
 
-  // Configuración para exportación estática (requerida para Capacitor)
-  output: "export",
+  // NOTA: Para desarrollo, no usamos exportación estática para permitir API routes
+  // Para producción con Capacitor, se puede cambiar a "export" y las llamadas
+  // deben ir directamente a Supabase desde el cliente
+  // output: "export",
 
   // Deshabilitar optimización de imágenes para exportación estática
   images: {
