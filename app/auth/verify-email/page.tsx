@@ -35,9 +35,9 @@ export default function VerifyEmailPage() {
       description="Hemos enviado un enlace de verificación a tu correo electrónico"
     >
       <div className="text-center space-y-4">
-        <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+        <div className="mx-auto w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
           <svg
-            className="w-8 h-8 text-blue-600"
+            className="w-8 h-8 text-primary-500"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -79,7 +79,7 @@ export default function VerifyEmailPage() {
 
         <Link
           href="/auth/login"
-          className="block text-sm text-blue-600 hover:text-blue-700 font-medium"
+          className="block text-sm text-primary-500 hover:text-primary-600 font-medium"
         >
           Volver al inicio de sesión
         </Link>

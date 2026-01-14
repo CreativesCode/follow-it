@@ -25,7 +25,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             w-full px-3 py-2 border rounded-lg
             text-gray-900 bg-white
             placeholder:text-gray-400 placeholder:opacity-100
-            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+            focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
             disabled:bg-gray-100 disabled:cursor-not-allowed disabled:placeholder:text-gray-300 disabled:text-gray-500
             ${error ? "border-red-500" : "border-gray-300"}
             ${className}

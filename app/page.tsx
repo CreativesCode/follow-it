@@ -3,13 +3,13 @@ import { Button } from "@/components/ui/Button";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100">
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Follow It</h1>
+              <h1 className="text-2xl font-bold text-primary-600">Follow It</h1>
             </div>
             <div className="flex items-center space-x-4">
               <Link href="/auth/login">
@@ -31,7 +31,7 @@ export default function Home() {
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-gray-900 mb-6">
                 Gestión de Repartos
                 <br />
-                <span className="text-blue-600">Simple y Eficiente</span>
+                <span className="text-primary-500">Simple y Eficiente</span>
               </h1>
               <p className="text-xl sm:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto">
                 Optimiza tus entregas con seguimiento en tiempo real, asignación
@@ -54,9 +54,9 @@ export default function Home() {
               {/* Features Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-20">
                 <div className="bg-white rounded-2xl shadow-lg p-8 text-left">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
+                  <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4">
                     <svg
-                      className="w-6 h-6 text-blue-600"
+                      className="w-6 h-6 text-primary-500"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -79,9 +79,9 @@ export default function Home() {
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-lg p-8 text-left">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+                  <div className="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mb-4">
                     <svg
-                      className="w-6 h-6 text-green-600"
+                      className="w-6 h-6 text-secondary-500"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"

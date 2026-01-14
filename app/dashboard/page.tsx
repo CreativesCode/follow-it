@@ -19,8 +19,8 @@ export default async function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Follow It</h1>
-              <span className="ml-3 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+              <h1 className="text-2xl font-bold text-primary-600">Follow It</h1>
+              <span className="ml-3 px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded">
                 {role.type === "business" ? "Negocio" : "Mensajero"}
               </span>
             </div>
@@ -46,7 +46,7 @@ export default async function DashboardPage() {
         <div className="space-y-6">
           {/* Welcome Message */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold text-primary-700 mb-2">
               ¡Bienvenido al Dashboard!
             </h2>
             <p className="text-gray-600">
@@ -60,9 +60,9 @@ export default async function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                <div className="flex-shrink-0 bg-primary-100 rounded-lg p-3">
                   <svg
-                    className="w-6 h-6 text-blue-600"
+                    className="w-6 h-6 text-primary-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -86,9 +86,9 @@ export default async function DashboardPage() {
 
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center">
-                <div className="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                <div className="flex-shrink-0 bg-secondary-100 rounded-lg p-3">
                   <svg
-                    className="w-6 h-6 text-green-600"
+                    className="w-6 h-6 text-secondary-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -168,11 +168,11 @@ export default async function DashboardPage() {
                   <div className="space-y-3 max-w-md mx-auto">
                     <a
                       href="/dashboard/couriers"
-                      className="flex items-center justify-between p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors group"
+                      className="flex items-center justify-between p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors group"
                     >
                       <div className="flex items-center">
                         <svg
-                          className="w-5 h-5 text-blue-600 mr-3"
+                          className="w-5 h-5 text-primary-500 mr-3"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -189,7 +189,7 @@ export default async function DashboardPage() {
                         </span>
                       </div>
                       <svg
-                        className="w-5 h-5 text-gray-400 group-hover:text-blue-600"
+                        className="w-5 h-5 text-gray-400 group-hover:text-primary-500"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -275,7 +275,7 @@ export default async function DashboardPage() {
                   <ul className="text-sm text-left max-w-md mx-auto space-y-2">
                     <li className="flex items-start">
                       <svg
-                        className="w-5 h-5 text-green-500 mt-0.5 mr-2"
+                        className="w-5 h-5 text-secondary-500 mt-0.5 mr-2"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >
@@ -289,7 +289,7 @@ export default async function DashboardPage() {
                     </li>
                     <li className="flex items-start">
                       <svg
-                        className="w-5 h-5 text-green-500 mt-0.5 mr-2"
+                        className="w-5 h-5 text-secondary-500 mt-0.5 mr-2"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >
@@ -303,7 +303,7 @@ export default async function DashboardPage() {
                     </li>
                     <li className="flex items-start">
                       <svg
-                        className="w-5 h-5 text-green-500 mt-0.5 mr-2"
+                        className="w-5 h-5 text-secondary-500 mt-0.5 mr-2"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >
@@ -317,7 +317,7 @@ export default async function DashboardPage() {
                     </li>
                     <li className="flex items-start">
                       <svg
-                        className="w-5 h-5 text-green-500 mt-0.5 mr-2"
+                        className="w-5 h-5 text-secondary-500 mt-0.5 mr-2"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >

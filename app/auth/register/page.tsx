@@ -81,20 +81,20 @@ export default function RegisterPage() {
             name="terms"
             id="terms"
             required
-            className="w-4 h-4 mt-1 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            className="w-4 h-4 mt-1 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
           />
           <label htmlFor="terms" className="ml-2 text-sm text-gray-700">
             Acepto los{" "}
             <Link
               href="/terms"
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="text-primary-500 hover:text-primary-600 font-medium"
             >
               Términos y Condiciones
             </Link>{" "}
             y la{" "}
             <Link
               href="/privacy"
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="text-primary-500 hover:text-primary-600 font-medium"
             >
               Política de Privacidad
             </Link>
@@ -110,7 +110,7 @@ export default function RegisterPage() {
         ¿Ya tienes una cuenta?{" "}
         <Link
           href="/auth/login"
-          className="text-blue-600 hover:text-blue-700 font-medium"
+          className="text-primary-500 hover:text-primary-600 font-medium"
         >
           Inicia sesión aquí
         </Link>

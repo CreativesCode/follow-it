@@ -41,14 +41,14 @@ export default function ForgotPasswordPage() {
       <div className="flex justify-center space-x-4 text-sm">
         <Link
           href="/auth/login"
-          className="text-blue-600 hover:text-blue-700 font-medium"
+          className="text-primary-500 hover:text-primary-600 font-medium"
         >
           Volver al inicio de sesión
         </Link>
         <span className="text-gray-400">|</span>
         <Link
           href="/auth/register"
-          className="text-blue-600 hover:text-blue-700 font-medium"
+          className="text-primary-500 hover:text-primary-600 font-medium"
         >
           Crear cuenta
         </Link>

@@ -58,13 +58,13 @@ export default function LoginPage() {
             <input
               type="checkbox"
               name="remember"
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
             />
             <span className="ml-2 text-gray-700">Recordarme</span>
           </label>
           <Link
             href="/auth/forgot-password"
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            className="text-primary-500 hover:text-primary-600 font-medium"
           >
             ¿Olvidaste tu contraseña?
           </Link>
@@ -132,7 +132,7 @@ export default function LoginPage() {
         ¿No tienes una cuenta?{" "}
         <Link
           href="/auth/register"
-          className="text-blue-600 hover:text-blue-700 font-medium"
+          className="text-primary-500 hover:text-primary-600 font-medium"
         >
           Regístrate aquí
         </Link>

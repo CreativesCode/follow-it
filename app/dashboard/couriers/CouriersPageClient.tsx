@@ -100,7 +100,7 @@ export default function CouriersPageClient({
   const getStatusBadge = (status: string) => {
     const badges = {
       pending: "bg-yellow-100 text-yellow-800",
-      accepted: "bg-green-100 text-green-800",
+      accepted: "bg-secondary-100 text-secondary-800",
       expired: "bg-gray-100 text-gray-800",
       cancelled: "bg-red-100 text-red-800",
     };
@@ -141,12 +141,12 @@ export default function CouriersPageClient({
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <Link href="/dashboard">
-                <h1 className="text-2xl font-bold text-gray-900 hover:text-blue-600 transition-colors cursor-pointer">
+                <h1 className="text-2xl font-bold text-primary-600 hover:text-primary-700 transition-colors cursor-pointer">
                   Follow It
                 </h1>
               </Link>
               <span className="text-gray-300">→</span>
-              <span className="text-lg font-medium text-gray-700">
+              <span className="text-lg font-medium text-primary-600">
                 Mensajeros
               </span>
             </div>
@@ -173,7 +173,7 @@ export default function CouriersPageClient({
           {/* Header Section */}
           <div className="flex justify-between items-center">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-2xl font-bold text-primary-700">
                 Gestión de Mensajeros
               </h2>
               <p className="text-gray-600 mt-1">
@@ -278,9 +278,9 @@ export default function CouriersPageClient({
                   <div key={courier.id} className="px-6 py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
-                        <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <div className="flex-shrink-0 w-10 h-10 bg-secondary-100 rounded-full flex items-center justify-center">
                           <svg
-                            className="w-5 h-5 text-green-600"
+                            className="w-5 h-5 text-secondary-500"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -309,7 +309,7 @@ export default function CouriersPageClient({
                       </div>
                       <div className="flex items-center space-x-3">
                         {courier.is_active ? (
-                          <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">
+                          <span className="px-2 py-1 text-xs font-medium bg-secondary-100 text-secondary-800 rounded">
                             Activo
                           </span>
                         ) : (
@@ -364,7 +364,7 @@ export default function CouriersPageClient({
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
-                          <p className="font-mono font-bold text-lg text-blue-600">
+                          <p className="font-mono font-bold text-lg text-primary-500">
                             {invitation.invitation_code}
                           </p>
                           <button

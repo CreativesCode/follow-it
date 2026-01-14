@@ -328,12 +328,12 @@ export default function OnboardingPage() {
           <button
             onClick={() => handleRoleSelect("business")}
             disabled={isLoading}
-            className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex items-start">
-              <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200">
+              <div className="flex-shrink-0 w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center group-hover:bg-primary-200">
                 <svg
-                  className="w-6 h-6 text-blue-600"
+                  className="w-6 h-6 text-primary-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -359,12 +359,12 @@ export default function OnboardingPage() {
           <button
             onClick={() => handleRoleSelect("courier")}
             disabled={isLoading}
-            className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-primary-500 hover:bg-primary-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex items-start">
-              <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200">
+              <div className="flex-shrink-0 w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center group-hover:bg-secondary-200">
                 <svg
-                  className="w-6 h-6 text-green-600"
+                  className="w-6 h-6 text-secondary-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -421,7 +421,7 @@ export default function OnboardingPage() {
             <select
               id="timezone"
               name="timezone"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               defaultValue="America/Havana"
             >
               <option value="America/Havana">Cuba (GMT-5)</option>
