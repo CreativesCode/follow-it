@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 const registerTokenSchema = z.object({
   token: z.string().min(1, "Token es requerido"),
   platform: z.enum(["ios", "android", "web"], {
-    errorMap: () => ({ message: "Platform debe ser ios, android o web" }),
+    message: "Platform debe ser ios, android o web",
   }),
   device_id: z.string().optional(),
 });

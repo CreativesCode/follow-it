@@ -5322,6 +5322,141 @@ import { CourierNotificationProvider } from "@/components/notifications/CourierN
 
 ---
 
+### 10.5 Mejoras Futuras del Sistema de Notificaciones
+
+#### 🎯 Prioridad Alta
+
+**1. Notificaciones para Mensajeros (Extender `useCourierNotifications`)**
+
+- ✅ **Implementado:** Notificación cuando se asigna un pedido
+- ⏳ **Pendiente:** Notificación cuando se desasigna un pedido (`assigned → pending`)
+- ⏳ **Pendiente:** Notificación cuando se cancela un pedido asignado
+- ⏳ **Pendiente:** Notificación cuando se reasigna un pedido (cambio de mensajero)
+
+**Implementación sugerida:**
+
+```typescript
+// Extender useCourierNotifications para incluir:
+interface UseCourierNotificationsOptions {
+  courierId: string;
+  onNewAssignment?: (order: Order) => void;
+  onUnassignment?: (order: Order) => void; // Nuevo
+  onCancellation?: (order: Order) => void; // Nuevo
+  onReassignment?: (order: Order) => void; // Nuevo
+  enabled?: boolean;
+}
+```
+
+**Eventos a escuchar:**
+
+- `order_events` con `type: "order_unassigned"` y `courier_id = courierId`
+- `order_events` con `type: "order_canceled"` y pedido tenía `assigned_courier_id = courierId`
+- `orders` UPDATE donde `assigned_courier_id` cambia de `courierId` a otro valor
+
+**2. Notificaciones para el Negocio (`useBusinessNotifications`)**
+
+Crear nuevo hook para que el negocio reciba notificaciones cuando:
+
+- ⏳ Mensajero marca pedido como "en_route"
+- ⏳ Mensajero marca pedido como "delivered"
+- ⏳ Mensajero marca pedido como "failed"
+- ⏳ Se sube un comprobante de entrega (`order_proofs` INSERT)
+
+**Implementación sugerida:**
+
+```typescript
+// lib/hooks/useBusinessNotifications.ts
+interface UseBusinessNotificationsOptions {
+  businessId: string;
+  onStatusChange?: (order: Order, fromStatus: string, toStatus: string) => void;
+  onProofUploaded?: (proof: Proof, order: Order) => void;
+  enabled?: boolean;
+}
+
+export function useBusinessNotifications({
+  businessId,
+  onStatusChange,
+  onProofUploaded,
+  enabled = true,
+}: UseBusinessNotificationsOptions) {
+  // Escuchar order_events donde business_id = businessId
+  // Escuchar order_proofs donde business_id = businessId
+  // Filtrar solo eventos importantes (en_route, delivered, failed)
+}
+```
+
+**Eventos a escuchar:**
+
+- `order_events` con `business_id = businessId` y `type: "status_changed"`
+- `order_events` con `business_id = businessId` y `to_status IN ('en_route', 'delivered', 'failed')`
+- `order_proofs` INSERT donde `business_id = businessId`
+
+#### 🎯 Prioridad Media
+
+**3. Notificaciones de Proximidad (GPS)**
+
+- Notificar al cliente cuando el mensajero está cerca del destino (ej: < 500m)
+- Requiere cálculo de distancia en tiempo real usando `courier_locations`
+
+**Implementación sugerida:**
+
+```typescript
+// lib/hooks/useProximityNotification.ts
+// Calcular distancia entre última ubicación del mensajero y dropoff_address
+// Notificar cuando distancia < umbral (ej: 500m)
+```
+
+**4. Notificaciones para Cliente (Tracking Público)**
+
+- Notificar al cliente cuando el pedido cambia de estado
+- Desafío: cliente no tiene sesión, solo token de tracking
+- Opciones:
+  - Polling cada 10-15s (ya implementado en `get_tracking_snapshot`)
+  - WebSocket con token efímero (más complejo)
+  - Email/SMS cuando cambia estado (requiere servicio externo)
+
+#### 📋 Checklist de Implementación
+
+**Fase 1: Notificaciones Mensajero (Extender)**
+
+- [ ] Agregar `onUnassignment` callback a `useCourierNotifications`
+- [ ] Escuchar eventos `order_unassigned` donde `courier_id = courierId`
+- [ ] Escuchar eventos `order_canceled` para pedidos asignados
+- [ ] Crear componente `OrderUnassignmentToast`
+- [ ] Actualizar `CourierNotificationProvider` para manejar múltiples tipos
+
+**Fase 2: Notificaciones Negocio (Nuevo)**
+
+- [ ] Crear `lib/hooks/useBusinessNotifications.ts`
+- [ ] Escuchar `order_events` con filtros de negocio
+- [ ] Escuchar `order_proofs` INSERT
+- [ ] Crear componente `BusinessNotificationToast`
+- [ ] Crear `BusinessNotificationProvider`
+- [ ] Integrar en dashboard del negocio
+
+**Fase 3: Notificaciones Proximidad (Opcional)**
+
+- [ ] Crear hook `useProximityNotification`
+- [ ] Calcular distancia en tiempo real
+- [ ] Notificar cuando < umbral
+- [ ] Integrar con tracking público
+
+**Fase 4: Notificaciones Cliente (Opcional)**
+
+- [ ] Evaluar necesidad real vs polling actual
+- [ ] Si necesario: implementar WebSocket con token efímero
+- [ ] O: integrar servicio de email/SMS para cambios críticos
+
+#### 💡 Notas de Implementación
+
+- **Todas las notificaciones usan Supabase Realtime (gratis)**
+- **Funcionan solo mientras la app esté abierta**
+- **Para notificaciones con app cerrada:** requeriría push nativas (FCM/APNS) o servicios externos (WhatsApp/SMS)
+- **Priorizar notificaciones críticas:** asignación, entrega, fallos
+- **Evitar spam:** no notificar cada cambio menor, solo eventos importantes
+
+---
+
 ## 11. Componentes UI Reutilizables
 
 ### 11.1 Componentes Base Adicionales
@@ -5669,6 +5804,13 @@ supabase/functions/
    - [x] OrderAssignmentToast component
    - [x] Integración con asignación de pedidos
    - [x] Documentación en docs/NOTIFICATIONS_REALTIME.md
+
+   **Mejoras Futuras (Ver Sección 10.5):**
+
+   - [ ] Notificaciones de desasignación/cancelación para mensajeros
+   - [ ] Hook useBusinessNotifications para el negocio
+   - [ ] Notificaciones cuando se sube comprobante
+   - [ ] Notificaciones de proximidad GPS (opcional)
 
 6. **Fase 6: Tracking GPS (1 semana)**
 

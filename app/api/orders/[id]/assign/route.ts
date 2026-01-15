@@ -131,7 +131,10 @@ export async function POST(
 }
 
 // DELETE /api/orders/[id]/assign - Desasignar
-export async function DELETE({ params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { user, businessMember } = await requireBusinessRole();
     const supabase = await createClient();

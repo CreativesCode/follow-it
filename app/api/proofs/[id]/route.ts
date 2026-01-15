@@ -1,15 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/proofs/[id] - Obtener proof con signed URL
-export async function GET({
-  params,
-}: {
-  params: Promise<{ id: string }> | { id: string };
-}) {
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const supabase = await createClient();
 
@@ -21,15 +20,13 @@ export async function GET({
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const resolvedParams = params instanceof Promise ? await params : params;
-    if (!resolvedParams || !resolvedParams.id) {
+    const { id } = await params;
+    if (!id) {
       return NextResponse.json(
         { error: "ID de comprobante requerido" },
         { status: 400 }
       );
     }
-
-    const { id } = resolvedParams;
 
     // Obtener proof usando admin client (bypasea RLS)
     const adminClient = createAdminClient();
