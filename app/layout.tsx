@@ -23,7 +23,14 @@ function getSiteUrl() {
     "http://localhost:3000";
 
   // Asegurar que tenga https:// cuando no sea localhost
+  // WhatsApp REQUIERE HTTPS para las imágenes Open Graph
   let baseUrl = url.startsWith("http") ? url : `https://${url}`;
+
+  // Forzar HTTPS en producción (no localhost)
+  if (!baseUrl.includes("localhost") && baseUrl.startsWith("http://")) {
+    baseUrl = baseUrl.replace("http://", "https://");
+  }
+
   // Remover trailing slash para construir URLs correctamente
   baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 
@@ -73,7 +80,12 @@ export async function generateMetadata(): Promise<Metadata> {
         "Optimiza tus entregas con seguimiento en tiempo real, asignación inteligente y comprobantes digitales",
       images: [
         {
-          // URL completamente absoluta - esto es crítico para que funcione
+          // URL completamente absoluta HTTPS - CRÍTICO para WhatsApp
+          // WhatsApp requiere:
+          // 1. URL absoluta con protocolo HTTPS (no HTTP)
+          // 2. Dimensiones explícitas (width y height)
+          // 3. Archivo accesible públicamente sin autenticación
+          // 4. Tamaño del archivo < 300 KB (actual: 137 KB ✓)
           url: ogImageUrl,
           width: 1200,
           height: 630,
