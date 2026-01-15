@@ -22,6 +22,7 @@
 12. [Hooks Personalizados](#12-hooks)
 13. [Validaciones (Zod Schemas)](#13-validaciones)
 14. [Edge Functions Detalladas](#14-edge-functions)
+15. [⚠️ Funcionalidades Prometidas en Planes de Precios (Pendientes)](#15-funcionalidades-prometidas-en-planes-de-precios-pendientes-de-implementación) ⚠️
 
 ---
 
@@ -5836,3 +5837,280 @@ supabase/functions/
 ---
 
 **Total estimado: 5-7 semanas** para un MVP funcional completo.
+
+---
+
+## 15. Funcionalidades Prometidas en Planes de Precios (Pendientes de Implementación)
+
+> ⚠️ **IMPORTANTE**: Esta sección documenta todas las funcionalidades que estamos prometiendo en `docs/precios.md` pero que aún **NO están implementadas**. Estas deben implementarse antes de lanzar los planes de pago o ajustar la comunicación de precios.
+
+### 📋 Análisis de Funcionalidades por Plan
+
+#### 🟢 Plan Básico (300 CUP/mes)
+
+**Funcionalidades Prometidas:**
+
+- ✅ 1 negocio - **IMPLEMENTADO** (multi-tenant existe)
+- ❌ **Hasta 2 mensajeros** - **PENDIENTE**: Sistema de límites por plan
+- ✅ Entregas ilimitadas - **IMPLEMENTADO** (no hay límite)
+- ⚠️ Tracking en tiempo real - **PARCIALMENTE**: Está en desarrollo (Fase 6)
+- ✅ Comprobante simple (foto) - **IMPLEMENTADO** (proofs con foto)
+- ✅ Panel web + app mensajero - **IMPLEMENTADO** (dashboard y app mensajero)
+
+**Funcionalidades a Implementar:**
+
+1. **Sistema de Límites de Mensajeros por Plan**
+   - Tabla `subscriptions` o `business_plans`
+   - Campo `max_couriers` en business o subscription
+   - Validación al invitar/activar mensajeros
+   - UI para mostrar límite alcanzado
+
+#### 🔵 Plan Negocio (600 CUP/mes)
+
+**Funcionalidades Prometidas:**
+
+- ✅ 1 negocio - **IMPLEMENTADO**
+- ❌ **Hasta 5 mensajeros** - **PENDIENTE**: Sistema de límites por plan
+- ✅ Todo lo del Básico - **IMPLEMENTADO**
+- ❌ **Historial de entregas** - **PENDIENTE**: Vista de historial completo
+- ✅ Tracking para clientes (link) - **IMPLEMENTADO** (tracking público existe)
+- ⚠️ Notificaciones - **PARCIALMENTE**: Solo para mensajeros, falta para clientes/negocio
+
+**Funcionalidades a Implementar:**
+
+1. **Historial de Entregas Completo**
+
+   - Vista de historial filtrado por fechas
+   - Exportación de historial (CSV/PDF)
+   - Búsqueda y filtros avanzados
+   - Estadísticas de entregas (por día, semana, mes)
+
+2. **Sistema de Notificaciones Completo**
+   - Notificaciones para el negocio cuando:
+     - Se asigna un pedido
+     - Se completa una entrega
+     - Se sube un comprobante
+     - Un mensajero cambia estado
+   - Notificaciones para clientes (opcional, vía WhatsApp/SMS)
+   - Configuración de preferencias de notificaciones
+
+#### 🟣 Plan Pro (1000 CUP/mes)
+
+**Funcionalidades Prometidas:**
+
+- ✅ 1 negocio - **IMPLEMENTADO**
+- ❌ **Hasta 10-15 mensajeros** - **PENDIENTE**: Sistema de límites por plan
+- ✅ Todo lo anterior - **IMPLEMENTADO**
+- ⚠️ **Roles (admin / operador)** - **PARCIALMENTE**: Estructura existe, falta gestión completa
+- ❌ **Reportes simples** - **PENDIENTE**: Sistema de reportes
+- ❌ **Soporte prioritario** - **PENDIENTE**: Sistema de tickets/soporte (o ajustar comunicación)
+
+**Funcionalidades a Implementar:**
+
+1. **Gestión Completa de Roles**
+
+   - UI para asignar/remover roles (admin, operador)
+   - Permisos diferenciados por rol:
+     - Admin: Todo (crear pedidos, gestionar mensajeros, ver reportes, configurar negocio)
+     - Operador: Crear pedidos, asignar mensajeros, ver reportes básicos
+   - Validación de permisos en todas las acciones
+   - Página de gestión de miembros del negocio
+
+2. **Sistema de Reportes Simples**
+
+   - Reporte de entregas por período
+   - Reporte de mensajeros (entregas, tiempos, eficiencia)
+   - Reporte de pedidos fallidos/cancelados
+   - Gráficos básicos (entregas por día, estado de pedidos)
+   - Exportación de reportes (PDF/CSV)
+
+3. **Soporte Prioritario** (Opcional - puede ser solo comunicación)
+   - Sistema de tickets de soporte
+   - O simplemente: email prioritario + respuesta garantizada en X horas
+   - O ajustar comunicación: "Soporte por email con respuesta prioritaria"
+
+### ➕ Add-ons Prometidos
+
+#### 1. Mensajero Adicional (1-2 USD/mes)
+
+**Estado:** ❌ **NO IMPLEMENTADO**
+
+**Funcionalidades a Implementar:**
+
+- Sistema de suscripciones/add-ons
+- Agregar mensajeros adicionales más allá del límite del plan
+- Facturación automática por mensajero adicional
+- UI para gestionar add-ons desde el dashboard
+
+#### 2. Marca Blanca (+5 USD/mes)
+
+**Estado:** ❌ **NO IMPLEMENTADO**
+
+**Funcionalidades a Implementar:**
+
+- Sistema de configuración de marca
+- Campo en business para activar/desactivar marca blanca
+- Remover "Powered by Follow It" de:
+  - Landing page de tracking público
+  - Emails/notificaciones
+  - Panel web (opcional)
+- Personalización de logo/colores (opcional, para futuro)
+
+#### 3. Hosting / Soporte Local
+
+**Estado:** ❌ **NO IMPLEMENTADO** (Es más un servicio, no funcionalidad)
+
+**Nota:** Esto es principalmente un servicio de consultoría/soporte, no requiere implementación técnica específica. Puede manejarse fuera de la plataforma.
+
+### 💳 Sistema de Suscripciones y Pagos
+
+**Estado:** ❌ **NO IMPLEMENTADO**
+
+**Funcionalidades Críticas a Implementar:**
+
+1. **Modelo de Datos de Suscripciones**
+
+   ```sql
+   -- Tabla de planes
+   create table subscription_plans (
+     id uuid primary key,
+     name text not null, -- 'basic', 'business', 'pro'
+     max_couriers integer not null,
+     price_cup integer not null,
+     features jsonb -- características del plan
+   );
+
+   -- Tabla de suscripciones activas
+   create table business_subscriptions (
+     id uuid primary key,
+     business_id uuid references businesses(id),
+     plan_id uuid references subscription_plans(id),
+     status text check (status in ('active', 'canceled', 'expired', 'trial')),
+     trial_ends_at timestamptz,
+     current_period_start timestamptz,
+     current_period_end timestamptz,
+     created_at timestamptz default now()
+   );
+
+   -- Tabla de add-ons
+   create table subscription_addons (
+     id uuid primary key,
+     subscription_id uuid references business_subscriptions(id),
+     type text not null, -- 'extra_courier', 'white_label'
+     quantity integer default 1,
+     price_cents integer,
+     created_at timestamptz default now()
+   );
+   ```
+
+2. **Sistema de Límites**
+
+   - Middleware/validación que verifica límites antes de:
+     - Invitar mensajeros
+     - Activar mensajeros
+     - Crear pedidos (si hay límite de entregas)
+   - UI que muestra límites y advertencias
+
+3. **Sistema de Prueba Gratis**
+
+   - Primer mes gratis automático
+   - O 14 días de prueba sin tarjeta
+   - Lógica de expiración de trial
+   - Notificaciones antes de que expire el trial
+
+4. **Integración de Pagos**
+
+   - Integración con pasarela de pagos (Stripe, PayPal, o pasarela local para Cuba)
+   - Webhooks para actualizar estado de suscripción
+   - Manejo de pagos fallidos
+   - Renovación automática
+
+5. **Facturación**
+   - Generación de facturas
+   - Historial de pagos
+   - Descargar facturas (PDF)
+
+### 📱 Notificaciones Automáticas (Estrategia de Retención)
+
+**Estado:** ❌ **NO IMPLEMENTADO**
+
+**Funcionalidades Prometidas en Estrategia de Entrada:**
+
+1. **WhatsApp Automático**
+
+   - Integración con API de WhatsApp (Twilio, WhatsApp Business API, o servicio local)
+   - Mensaje automático cuando se genera link de tracking:
+     - "Tu cliente está viendo el tracking" (para el negocio)
+     - "Tu pedido está en camino" (para el cliente, opcional)
+   - Notificaciones de cambios de estado importantes
+
+2. **Notificaciones por Email**
+   - Emails de bienvenida
+   - Resumen diario/semanal de entregas
+   - Alertas de límites alcanzados
+   - Recordatorios de pago
+
+### 📊 Resumen de Prioridades
+
+#### 🔴 **CRÍTICO** (Necesario antes de lanzar planes de pago):
+
+1. ✅ Sistema de suscripciones y planes
+2. ✅ Sistema de límites de mensajeros por plan
+3. ✅ Sistema de prueba gratis (primer mes / 14 días)
+4. ✅ Integración de pagos básica
+
+#### 🟡 **IMPORTANTE** (Mejora la propuesta de valor):
+
+5. ✅ Historial de entregas completo
+6. ✅ Gestión completa de roles (admin/operador)
+7. ✅ Sistema de reportes simples
+8. ✅ Notificaciones completas (negocio + clientes)
+
+#### 🟢 **NICE TO HAVE** (Puede implementarse después):
+
+9. ✅ Add-ons (mensajeros adicionales, marca blanca)
+10. ✅ WhatsApp automático
+11. ✅ Reportes avanzados con gráficos
+
+### 📝 Checklist de Implementación
+
+#### Fase 1: Sistema de Suscripciones (2-3 semanas)
+
+- [ ] Crear migración SQL para tablas de suscripciones
+- [ ] Crear tipos TypeScript para subscriptions
+- [ ] Crear validaciones Zod para subscriptions
+- [ ] Crear API Routes para gestionar suscripciones
+- [ ] Crear hooks useSubscription, usePlans
+- [ ] Crear UI de selección de plan en registro
+- [ ] Crear UI de gestión de suscripción en dashboard
+- [ ] Implementar sistema de límites (middleware/validaciones)
+- [ ] Integrar pasarela de pagos
+- [ ] Implementar lógica de trial/primer mes gratis
+- [ ] Crear webhooks para actualizar estado de suscripción
+
+#### Fase 2: Funcionalidades por Plan (2 semanas)
+
+- [ ] Historial de entregas completo
+  - [ ] Vista de historial con filtros
+  - [ ] Exportación CSV/PDF
+  - [ ] Estadísticas básicas
+- [ ] Gestión completa de roles
+  - [ ] UI para asignar/remover roles
+  - [ ] Validación de permisos en todas las acciones
+  - [ ] Página de gestión de miembros
+- [ ] Sistema de reportes simples
+  - [ ] Reporte de entregas
+  - [ ] Reporte de mensajeros
+  - [ ] Gráficos básicos
+  - [ ] Exportación de reportes
+
+#### Fase 3: Notificaciones y Add-ons (1-2 semanas)
+
+- [ ] Notificaciones completas para negocio
+- [ ] Integración WhatsApp (opcional)
+- [ ] Add-ons: Mensajeros adicionales
+- [ ] Add-ons: Marca blanca
+
+---
+
+**Nota Final:** Antes de prometer estas funcionalidades públicamente, asegúrate de que estén implementadas o ajusta la comunicación de precios para reflejar solo lo que está disponible.
