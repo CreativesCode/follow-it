@@ -5,13 +5,22 @@ type Props = {
   params: Promise<{ token: string }>;
 };
 
+type MetadataProps = {
+  params: Promise<{ token: string }>;
+};
+
 export default async function TrackingPage(props: Props) {
   const params = await props.params;
   return <TrackingPageClient token={params.token} />;
 }
 
 // Metadata con OpenGraph completo para compartir en WhatsApp
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata(
+  props: MetadataProps
+): Promise<Metadata> {
+  const params = await props.params;
+  const token = params.token;
+
   // Obtener la URL base del sitio
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL ??
@@ -26,18 +35,25 @@ export async function generateMetadata(): Promise<Metadata> {
   baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 
   const ogImageUrl = `${baseUrl}/opengraph.jpg`;
+  const trackingUrl = `${baseUrl}/track/${token}`;
 
   return {
-    title: "Seguimiento de Pedido | Follow It",
-    description: "Sigue tu pedido en tiempo real con Follow It",
+    title: "Seguimiento de Pedido en Tiempo Real | Follow It",
+    description:
+      "Sigue tu pedido en tiempo real con Follow It. Visualiza la ubicación del mensajero, estado de entrega y recibe actualizaciones instantáneas.",
     metadataBase: new URL(baseUrl),
+    robots: {
+      index: false, // Las páginas de tracking con token no deben indexarse
+      follow: false,
+    },
     openGraph: {
       type: "website",
       locale: "es_ES",
-      url: `${baseUrl}/track`,
+      url: trackingUrl,
       siteName: "Follow It",
-      title: "Seguimiento de Pedido | Follow It",
-      description: "Sigue tu pedido en tiempo real con Follow It",
+      title: "Seguimiento de Pedido en Tiempo Real | Follow It",
+      description:
+        "Sigue tu pedido en tiempo real. Visualiza la ubicación del mensajero y el estado de tu entrega",
       images: [
         {
           url: ogImageUrl,
@@ -50,8 +66,9 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: "Seguimiento de Pedido | Follow It",
-      description: "Sigue tu pedido en tiempo real con Follow It",
+      title: "Seguimiento de Pedido en Tiempo Real | Follow It",
+      description:
+        "Sigue tu pedido en tiempo real con ubicación GPS y actualizaciones instantáneas",
       images: [
         {
           url: ogImageUrl,

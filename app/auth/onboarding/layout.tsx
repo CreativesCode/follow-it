@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DashboardPageClient } from "./DashboardPageClient";
 
 function getSiteUrl() {
   const url =
@@ -20,45 +19,49 @@ export async function generateMetadata(): Promise<Metadata> {
   const ogImageUrl = `${siteUrl}/opengraph.jpg`;
 
   return {
-    title: "Dashboard | Follow It",
+    title: "Configuración Inicial | Follow It",
     description:
-      "Gestiona tus repartos, pedidos y mensajeros desde el panel de control de Follow It",
+      "Configura tu perfil en Follow It. Selecciona si eres un negocio o mensajero para personalizar tu experiencia",
     metadataBase: new URL(siteUrl),
     robots: {
-      index: false, // Los dashboards no deben indexarse
+      index: false,
       follow: false,
     },
     openGraph: {
       type: "website",
       locale: "es_ES",
-      url: `${siteUrl}/dashboard`,
+      url: `${siteUrl}/auth/onboarding`,
       siteName: "Follow It",
-      title: "Dashboard | Follow It",
-      description: "Panel de control para gestionar tus repartos y entregas",
+      title: "Configuración Inicial | Follow It",
+      description: "Configura tu perfil y comienza a usar Follow It",
       images: [
         {
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: "Follow It - Dashboard",
+          alt: "Follow It - Configuración Inicial",
           type: "image/jpeg",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Dashboard | Follow It",
-      description: "Panel de control de Follow It",
+      title: "Configuración Inicial | Follow It",
+      description: "Configura tu perfil en Follow It",
       images: [
         {
           url: ogImageUrl,
-          alt: "Follow It - Dashboard",
+          alt: "Follow It - Configuración Inicial",
         },
       ],
     },
   };
 }
 
-export default function DashboardPage() {
-  return <DashboardPageClient />;
+export default function OnboardingLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <>{children}</>;
 }

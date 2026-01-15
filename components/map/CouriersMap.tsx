@@ -153,10 +153,10 @@ export function CouriersMap({
                     <strong>Pedidos activos:</strong>{" "}
                     {courier.active_orders_count}
                   </p>
-                  {courier.last_location.accuracy && (
+                  {courier.last_location.accuracy_m && (
                     <p className="text-gray-600 mb-1">
                       <strong>Precisión:</strong> ~
-                      {Math.round(courier.last_location.accuracy)}m
+                      {Math.round(courier.last_location.accuracy_m)}m
                     </p>
                   )}
                   {courier.last_location.recorded_at && (

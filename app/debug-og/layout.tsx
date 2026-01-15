@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DashboardPageClient } from "./DashboardPageClient";
 
 function getSiteUrl() {
   const url =
@@ -20,45 +19,49 @@ export async function generateMetadata(): Promise<Metadata> {
   const ogImageUrl = `${siteUrl}/opengraph.jpg`;
 
   return {
-    title: "Dashboard | Follow It",
+    title: "Debug OpenGraph | Follow It",
     description:
-      "Gestiona tus repartos, pedidos y mensajeros desde el panel de control de Follow It",
+      "Herramienta de depuración para verificar y validar los meta tags de OpenGraph y Twitter Card",
     metadataBase: new URL(siteUrl),
     robots: {
-      index: false, // Los dashboards no deben indexarse
+      index: false, // Página de debug no debe indexarse
       follow: false,
     },
     openGraph: {
       type: "website",
       locale: "es_ES",
-      url: `${siteUrl}/dashboard`,
+      url: `${siteUrl}/debug-og`,
       siteName: "Follow It",
-      title: "Dashboard | Follow It",
-      description: "Panel de control para gestionar tus repartos y entregas",
+      title: "Debug OpenGraph | Follow It",
+      description: "Herramienta de depuración para meta tags OpenGraph",
       images: [
         {
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: "Follow It - Dashboard",
+          alt: "Follow It - Debug OpenGraph",
           type: "image/jpeg",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Dashboard | Follow It",
-      description: "Panel de control de Follow It",
+      title: "Debug OpenGraph | Follow It",
+      description: "Herramienta de depuración para meta tags",
       images: [
         {
           url: ogImageUrl,
-          alt: "Follow It - Dashboard",
+          alt: "Follow It - Debug OpenGraph",
         },
       ],
     },
   };
 }
 
-export default function DashboardPage() {
-  return <DashboardPageClient />;
+export default function DebugOGLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <>{children}</>;
 }

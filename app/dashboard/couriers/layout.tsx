@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DashboardPageClient } from "./DashboardPageClient";
 
 function getSiteUrl() {
   const url =
@@ -20,45 +19,49 @@ export async function generateMetadata(): Promise<Metadata> {
   const ogImageUrl = `${siteUrl}/opengraph.jpg`;
 
   return {
-    title: "Dashboard | Follow It",
+    title: "Mensajeros | Follow It",
     description:
-      "Gestiona tus repartos, pedidos y mensajeros desde el panel de control de Follow It",
+      "Gestiona tu equipo de mensajeros, invita nuevos miembros y asigna pedidos",
     metadataBase: new URL(siteUrl),
     robots: {
-      index: false, // Los dashboards no deben indexarse
+      index: false,
       follow: false,
     },
     openGraph: {
       type: "website",
       locale: "es_ES",
-      url: `${siteUrl}/dashboard`,
+      url: `${siteUrl}/dashboard/couriers`,
       siteName: "Follow It",
-      title: "Dashboard | Follow It",
-      description: "Panel de control para gestionar tus repartos y entregas",
+      title: "Mensajeros | Follow It",
+      description: "Gestiona tu equipo de mensajeros y asigna pedidos",
       images: [
         {
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: "Follow It - Dashboard",
+          alt: "Follow It - Mensajeros",
           type: "image/jpeg",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Dashboard | Follow It",
-      description: "Panel de control de Follow It",
+      title: "Mensajeros | Follow It",
+      description: "Gestiona tu equipo de mensajeros",
       images: [
         {
           url: ogImageUrl,
-          alt: "Follow It - Dashboard",
+          alt: "Follow It - Mensajeros",
         },
       ],
     },
   };
 }
 
-export default function DashboardPage() {
-  return <DashboardPageClient />;
+export default function CouriersLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <>{children}</>;
 }

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DashboardPageClient } from "./DashboardPageClient";
 
 function getSiteUrl() {
   const url =
@@ -20,45 +19,50 @@ export async function generateMetadata(): Promise<Metadata> {
   const ogImageUrl = `${siteUrl}/opengraph.jpg`;
 
   return {
-    title: "Dashboard | Follow It",
+    title: "Crear Cuenta | Follow It",
     description:
-      "Gestiona tus repartos, pedidos y mensajeros desde el panel de control de Follow It",
+      "Regístrate gratis en Follow It y comienza a gestionar tus repartos de manera profesional. Seguimiento en tiempo real, comprobantes digitales y más.",
     metadataBase: new URL(siteUrl),
     robots: {
-      index: false, // Los dashboards no deben indexarse
-      follow: false,
+      index: true, // La página de registro puede indexarse
+      follow: true,
     },
     openGraph: {
       type: "website",
       locale: "es_ES",
-      url: `${siteUrl}/dashboard`,
+      url: `${siteUrl}/auth/register`,
       siteName: "Follow It",
-      title: "Dashboard | Follow It",
-      description: "Panel de control para gestionar tus repartos y entregas",
+      title: "Crear Cuenta Gratis | Follow It",
+      description:
+        "Regístrate gratis y comienza a gestionar tus repartos con seguimiento en tiempo real",
       images: [
         {
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: "Follow It - Dashboard",
+          alt: "Follow It - Crear Cuenta",
           type: "image/jpeg",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Dashboard | Follow It",
-      description: "Panel de control de Follow It",
+      title: "Crear Cuenta Gratis | Follow It",
+      description: "Regístrate gratis y gestiona tus repartos profesionalmente",
       images: [
         {
           url: ogImageUrl,
-          alt: "Follow It - Dashboard",
+          alt: "Follow It - Crear Cuenta",
         },
       ],
     },
   };
 }
 
-export default function DashboardPage() {
-  return <DashboardPageClient />;
+export default function RegisterLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <>{children}</>;
 }

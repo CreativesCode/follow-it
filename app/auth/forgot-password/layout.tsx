@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { DashboardPageClient } from "./DashboardPageClient";
 
 function getSiteUrl() {
   const url =
@@ -20,45 +19,49 @@ export async function generateMetadata(): Promise<Metadata> {
   const ogImageUrl = `${siteUrl}/opengraph.jpg`;
 
   return {
-    title: "Dashboard | Follow It",
+    title: "Recuperar Contraseña | Follow It",
     description:
-      "Gestiona tus repartos, pedidos y mensajeros desde el panel de control de Follow It",
+      "Recupera el acceso a tu cuenta de Follow It. Te enviaremos un enlace para restablecer tu contraseña.",
     metadataBase: new URL(siteUrl),
     robots: {
-      index: false, // Los dashboards no deben indexarse
+      index: false,
       follow: false,
     },
     openGraph: {
       type: "website",
       locale: "es_ES",
-      url: `${siteUrl}/dashboard`,
+      url: `${siteUrl}/auth/forgot-password`,
       siteName: "Follow It",
-      title: "Dashboard | Follow It",
-      description: "Panel de control para gestionar tus repartos y entregas",
+      title: "Recuperar Contraseña | Follow It",
+      description: "Recupera el acceso a tu cuenta de Follow It",
       images: [
         {
           url: ogImageUrl,
           width: 1200,
           height: 630,
-          alt: "Follow It - Dashboard",
+          alt: "Follow It - Recuperar Contraseña",
           type: "image/jpeg",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Dashboard | Follow It",
-      description: "Panel de control de Follow It",
+      title: "Recuperar Contraseña | Follow It",
+      description: "Recupera el acceso a tu cuenta",
       images: [
         {
           url: ogImageUrl,
-          alt: "Follow It - Dashboard",
+          alt: "Follow It - Recuperar Contraseña",
         },
       ],
     },
   };
 }
 
-export default function DashboardPage() {
-  return <DashboardPageClient />;
+export default function ForgotPasswordLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <>{children}</>;
 }
