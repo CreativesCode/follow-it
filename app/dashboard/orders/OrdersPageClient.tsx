@@ -8,7 +8,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { useOrders } from "@/lib/hooks/useOrders";
 import { OrderFormData } from "@/types/orders";
-import { LayoutGrid, List, Package, Plus, X } from "lucide-react";
+import { Package, Plus, X } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -72,9 +72,9 @@ export function OrdersPageClient({ businessId }: Props) {
   return (
     <div className="space-y-4 md:space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-row items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+          <h1 className="text-xl md:text-2xl font-bold text-primary-700">
             Pedidos
           </h1>
           <p className="text-sm md:text-base text-gray-500 mt-1">
@@ -84,30 +84,6 @@ export function OrdersPageClient({ businessId }: Props) {
         </div>
 
         <div className="flex items-center gap-2 md:gap-3">
-          {/* Toggle vista - Solo en desktop */}
-          <div className="hidden md:flex items-center border rounded-lg overflow-hidden">
-            <button
-              onClick={() => setViewMode("list")}
-              className={`p-2 ${
-                viewMode === "list"
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-500"
-              }`}
-            >
-              <List className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setViewMode("kanban")}
-              className={`p-2 ${
-                viewMode === "kanban"
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-500"
-              }`}
-            >
-              <LayoutGrid className="w-5 h-5" />
-            </button>
-          </div>
-
           {/* Crear pedido */}
           <Button
             onClick={() => setShowCreateModal(true)}
