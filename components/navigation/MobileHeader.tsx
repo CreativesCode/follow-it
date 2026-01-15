@@ -1,6 +1,7 @@
 "use client";
 import { logout } from "@/lib/auth/client-actions";
 import { useAuth } from "@/lib/contexts/AuthContext";
+import { useIsCapacitor } from "@/lib/hooks/useIsCapacitor";
 import { LogOut } from "lucide-react";
 import { NotificationDropdown } from "./NotificationDropdown";
 
@@ -10,13 +11,26 @@ type Props = {
 
 export function MobileHeader({ title }: Props) {
   const { roleType } = useAuth();
+  const isCapacitor = useIsCapacitor();
 
   const handleLogout = async () => {
     await logout();
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-gray-200 safe-area-top">
+    <header
+      className={`sticky top-0 z-40 bg-white border-b border-gray-200 ${
+        isCapacitor ? "safe-area-top" : ""
+      }`}
+      style={
+        isCapacitor
+          ? {
+              // Asegurar que el header respete el status bar en Capacitor
+              paddingTop: "env(safe-area-inset-top)",
+            }
+          : undefined
+      }
+    >
       <div className="flex items-center justify-between h-14 px-4">
         <div className="flex items-center gap-3">
           <div>
@@ -31,7 +45,7 @@ export function MobileHeader({ title }: Props) {
           </span>
           <button
             onClick={handleLogout}
-            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
             title="Cerrar Sesión"
           >
             <LogOut className="w-5 h-5" />

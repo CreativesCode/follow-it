@@ -5,14 +5,19 @@ import { DesktopSidebar } from "@/components/navigation/DesktopSidebar";
 import { MobileBottomNav } from "@/components/navigation/MobileBottomNav";
 import { MobileHeader } from "@/components/navigation/MobileHeader";
 import { AuthProvider, useAuth } from "@/lib/contexts/AuthContext";
+import { useIsCapacitor } from "@/lib/hooks/useIsCapacitor";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
+  const isCapacitor = useIsCapacitor();
   const router = useRouter();
   const { user, userLoading, roleType, roleLoading } = useAuth();
+
+  // En Capacitor, siempre usar layout móvil independientemente del tamaño de pantalla
+  const shouldUseMobileLayout = isMobile || isCapacitor;
 
   useEffect(() => {
     if (userLoading || roleLoading) return;
@@ -39,7 +44,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isMobile) {
+  if (shouldUseMobileLayout) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <MobileHeader />
