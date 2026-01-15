@@ -1,6 +1,5 @@
 "use client";
 
-import { OrderTrackingMap } from "@/components/map/OrderTrackingMap";
 import { PublicOrderTimeline } from "@/components/orders/PublicOrderTimeline";
 import { ORDER_STATUS_CONFIG } from "@/types/orders";
 import {
@@ -16,7 +15,17 @@ import {
   User,
   XCircle,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
+
+// Dynamic import para evitar errores de SSR con react-leaflet
+const OrderTrackingMap = dynamic(
+  () =>
+    import("@/components/map/OrderTrackingMap").then((mod) => ({
+      default: mod.OrderTrackingMap,
+    })),
+  { ssr: false }
+);
 
 // Mapeo de nombres de iconos a componentes reales
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {

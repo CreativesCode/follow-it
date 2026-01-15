@@ -1,6 +1,5 @@
 "use client";
 
-import { CouriersMap } from "@/components/map/CouriersMap";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
 import { OrderForm } from "@/components/orders/OrderForm";
@@ -17,8 +16,18 @@ import {
   Truck,
   X,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+
+// Dynamic import para evitar errores de SSR con react-leaflet
+const CouriersMap = dynamic(
+  () =>
+    import("@/components/map/CouriersMap").then((mod) => ({
+      default: mod.CouriersMap,
+    })),
+  { ssr: false }
+);
 
 type Props = {
   businessId: string;
@@ -183,45 +192,6 @@ export function BusinessDashboardClient({ businessId }: Props) {
         </div>
       </div>
 
-      {/* Mapa de Mensajeros en Tiempo Real */}
-      {couriersWithLocations.length > 0 && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-4 md:px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">
-              📍 Mensajeros en Tiempo Real
-            </h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Visualiza dónde están tus mensajeros en este momento
-            </p>
-          </div>
-          <div className="p-4">
-            {locationsLoading ? (
-              <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                  <p className="text-sm text-gray-600">
-                    Cargando ubicaciones...
-                  </p>
-                </div>
-              </div>
-            ) : locationsError ? (
-              <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <p className="text-sm">Error al cargar ubicaciones</p>
-                  <p className="text-xs mt-1">{locationsError}</p>
-                </div>
-              </div>
-            ) : (
-              <CouriersMap
-                couriers={couriersWithLocations}
-                height="400px"
-                className="w-full"
-              />
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Pedidos que requieren atención */}
       {ordersNeedingAttention.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 md:p-6">
@@ -307,6 +277,45 @@ export function BusinessDashboardClient({ businessId }: Props) {
           </div>
         )}
       </div>
+
+      {/* Mapa de Mensajeros en Tiempo Real */}
+      {couriersWithLocations.length > 0 && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="px-4 md:px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">
+              📍 Mensajeros en Tiempo Real
+            </h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Visualiza dónde están tus mensajeros en este momento
+            </p>
+          </div>
+          <div className="p-4">
+            {locationsLoading ? (
+              <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                  <p className="text-sm text-gray-600">
+                    Cargando ubicaciones...
+                  </p>
+                </div>
+              </div>
+            ) : locationsError ? (
+              <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
+                <div className="text-center text-gray-500">
+                  <p className="text-sm">Error al cargar ubicaciones</p>
+                  <p className="text-xs mt-1">{locationsError}</p>
+                </div>
+              </div>
+            ) : (
+              <CouriersMap
+                couriers={couriersWithLocations}
+                height="400px"
+                className="w-full"
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Acciones Rápidas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

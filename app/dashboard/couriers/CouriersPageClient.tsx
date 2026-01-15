@@ -1,10 +1,19 @@
 "use client";
-import { CouriersMap } from "@/components/map/CouriersMap";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { FormInput } from "@/components/ui/FormInput";
 import { useRealtimeLocations } from "@/lib/hooks/useRealtimeLocations";
+import dynamic from "next/dynamic";
 import { useState } from "react";
+
+// Dynamic import para evitar errores de SSR con react-leaflet
+const CouriersMap = dynamic(
+  () =>
+    import("@/components/map/CouriersMap").then((mod) => ({
+      default: mod.CouriersMap,
+    })),
+  { ssr: false }
+);
 
 interface Courier {
   id: string;
