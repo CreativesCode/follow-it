@@ -48,7 +48,7 @@ export async function POST(
     // 2. Verificar que el courier existe y pertenece al negocio
     const { data: courier, error: courierError } = await supabase
       .from("couriers")
-      .select("id, display_name, is_active, user_id")
+      .select("id, display_name, is_active, user_id, phone")
       .eq("id", courier_id)
       .eq("business_id", businessMember.business_id)
       .single();
@@ -99,6 +99,70 @@ export async function POST(
     // 5. Notificación: Se envía automáticamente vía Supabase Realtime
     // El mensajero recibirá la notificación en tiempo real si tiene la app abierta
     // (gratis, sin configuración adicional necesaria)
+
+    // 6. Notificación por WhatsApp al mensajero (opcional, no bloquea)
+    try {
+      // Obtener teléfono del mensajero (ya lo tenemos en courier.phone)
+      const courierPhone = (courier as { phone: string | null }).phone;
+
+      // Obtener detalles del pedido para el mensaje
+      const { data: orderDetails } = await supabase
+        .from("orders")
+        .select("code, dropoff_address")
+        .eq("id", orderId)
+        .single();
+
+      if (courierPhone && orderDetails) {
+        // Obtener tracking link si existe
+        const { data: trackingLink } = await supabase
+          .from("order_tracking_links")
+          .select("token")
+          .eq("order_id", orderId)
+          .eq("is_revoked", false)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const trackingUrl = trackingLink
+          ? `${process.env.NEXT_PUBLIC_APP_URL || ""}/track/${
+              trackingLink.token
+            }`
+          : undefined;
+
+        const { formatAssignmentMessage } = await import(
+          "@/lib/utils/whatsapp"
+        );
+        const message = formatAssignmentMessage(
+          orderDetails.code || `#${orderId.slice(0, 8)}`,
+          orderDetails.dropoff_address,
+          trackingUrl
+        );
+
+        // Enviar por WhatsApp (no bloquea si falla)
+        const internalSecret = process.env.INTERNAL_API_SECRET;
+        if (internalSecret) {
+          const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send_whatsapp_notification`;
+          fetch(fnUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-internal-secret": internalSecret,
+            },
+            body: JSON.stringify({
+              phone_number: courierPhone,
+              message,
+              order_code: orderDetails.code,
+              tracking_url: trackingUrl,
+            }),
+          }).catch((err) => {
+            console.error("Error sending WhatsApp notification:", err);
+          });
+        }
+      }
+    } catch (whatsappError) {
+      console.error("Error preparing WhatsApp notification:", whatsappError);
+      // No fallar por esto
+    }
 
     return NextResponse.json({
       success: true,

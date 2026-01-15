@@ -9,7 +9,7 @@ type Props = {
 };
 
 export function MobileHeader({ title, onMenuClick }: Props) {
-  const { user } = useUser();
+  useUser();
   const { type: roleType } = useUserRole();
 
   return (
@@ -25,7 +25,7 @@ export function MobileHeader({ title, onMenuClick }: Props) {
             </button>
           )}
           <div>
-            <h1 className="text-lg font-bold text-primary-600">Follow It</h1>
+            <img src="/logo_horizontal.svg" alt="Follow It" className="h-8" />
             {title && <p className="text-xs text-gray-500 mt-0.5">{title}</p>}
           </div>
         </div>

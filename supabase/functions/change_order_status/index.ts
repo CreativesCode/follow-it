@@ -233,6 +233,103 @@ Deno.serve(async (req) => {
       details: evErr.message,
     });
 
+  // Notificación por WhatsApp al cliente (si aplica)
+  // Solo para estados importantes: en_route, delivered, failed
+  if (["en_route", "delivered", "failed"].includes(to_status)) {
+    try {
+      // Obtener detalles del pedido
+      const { data: orderDetails } = await admin
+        .from("orders")
+        .select("code, customer_id")
+        .eq("id", order_id)
+        .single();
+
+      let customerPhone: string | null = null;
+
+      if (orderDetails?.customer_id) {
+        // Obtener teléfono del cliente
+        const { data: customer } = await admin
+          .from("customers")
+          .select("phone")
+          .eq("id", orderDetails.customer_id)
+          .maybeSingle();
+
+        customerPhone = customer?.phone || null;
+      }
+
+      if (customerPhone && orderDetails) {
+        // Obtener tracking link
+        const { data: trackingLink } = await admin
+          .from("order_tracking_links")
+          .select("token")
+          .eq("order_id", order_id)
+          .eq("is_revoked", false)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const trackingUrl = trackingLink
+          ? `${Deno.env.get("NEXT_PUBLIC_APP_URL") || ""}/track/${
+              trackingLink.token
+            }`
+          : undefined;
+
+        // Generar mensaje según estado
+        let message = "";
+        const orderCode = orderDetails.code || `#${order_id.slice(0, 8)}`;
+
+        if (to_status === "en_route") {
+          message = `🚛 *Tu pedido está en camino*\n\n`;
+          message += `Pedido: *${orderCode}*\n\n`;
+          message += `El mensajero ya está en camino a tu dirección.`;
+          if (trackingUrl) {
+            message += `\n\nSeguimiento en tiempo real: ${trackingUrl}`;
+          }
+        } else if (to_status === "delivered") {
+          message = `✅ *Tu pedido ha sido entregado*\n\n`;
+          message += `Pedido: *${orderCode}*\n\n`;
+          message += `¡Gracias por tu compra! Esperamos que todo esté en orden.`;
+          if (trackingUrl) {
+            message += `\n\nVer detalles: ${trackingUrl}`;
+          }
+        } else if (to_status === "failed") {
+          message = `❌ *Hubo un problema con tu pedido*\n\n`;
+          message += `Pedido: *${orderCode}*\n\n`;
+          message += `Lamentamos las molestias. Por favor, contacta con nosotros para resolver el problema.`;
+          if (note) {
+            message += `\n\nNota: ${note}`;
+          }
+        }
+
+        // Enviar por WhatsApp (no bloquea si falla)
+        const internalSecret = Deno.env.get("INTERNAL_API_SECRET");
+        if (internalSecret && message) {
+          const fnUrl = `${Deno.env.get(
+            "SUPABASE_URL"
+          )}/functions/v1/send_whatsapp_notification`;
+          fetch(fnUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-internal-secret": internalSecret,
+            },
+            body: JSON.stringify({
+              phone_number: customerPhone,
+              message,
+              order_code: orderCode,
+              tracking_url: trackingUrl,
+            }),
+          }).catch((err) => {
+            console.error("Error sending WhatsApp notification:", err);
+          });
+        }
+      }
+    } catch (whatsappError) {
+      console.error("Error preparing WhatsApp notification:", whatsappError);
+      // No fallar por esto
+    }
+  }
+
   return ok({
     order_id,
     from_status,

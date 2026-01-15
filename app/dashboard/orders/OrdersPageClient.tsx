@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { useOrders } from "@/lib/hooks/useOrders";
 import { OrderFormData } from "@/types/orders";
 import { LayoutGrid, List, Package, Plus, X } from "lucide-react";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 type Props = {
   businessId: string;
@@ -20,7 +21,11 @@ type ViewMode = "list" | "kanban";
 export function OrdersPageClient({ businessId }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const orderIdFromUrl = searchParams.get("orderId");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [urlProcessed, setUrlProcessed] = useState(false);
 
   const {
     orders,
@@ -32,6 +37,29 @@ export function OrdersPageClient({ businessId }: Props) {
     createOrder,
     refetch,
   } = useOrders();
+
+  // Procesar orderId de la URL una sola vez
+  useEffect(() => {
+    if (orderIdFromUrl && !urlProcessed) {
+      // Usar startTransition para evitar el warning de React
+      setSelectedOrderId(orderIdFromUrl);
+      setUrlProcessed(true);
+
+      // Limpiar el parámetro de la URL sin recargar la página
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.delete("orderId");
+      const newUrl = newSearchParams.toString()
+        ? `/dashboard/orders?${newSearchParams.toString()}`
+        : "/dashboard/orders";
+      router.replace(newUrl, { scroll: false });
+    } else if (!orderIdFromUrl && urlProcessed) {
+      // Reset cuando ya no hay orderId en la URL
+      setUrlProcessed(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderIdFromUrl]);
+
+  const effectiveOrderId = selectedOrderId;
 
   const handleCreateOrder = async (data: OrderFormData) => {
     const result = await createOrder(data);
@@ -175,12 +203,14 @@ export function OrdersPageClient({ businessId }: Props) {
       )}
 
       {/* Modal detalle/editar pedido */}
-      {selectedOrderId && (
+      {effectiveOrderId && (
         <OrderDetailModal
-          key={selectedOrderId} // Key para resetear estado al cambiar orden
-          orderId={selectedOrderId}
+          key={effectiveOrderId} // Key para resetear estado al cambiar orden
+          orderId={effectiveOrderId}
           businessId={businessId}
-          onClose={() => setSelectedOrderId(null)}
+          onClose={() => {
+            setSelectedOrderId(null);
+          }}
           onOrderUpdate={refetch}
         />
       )}

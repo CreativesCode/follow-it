@@ -18,7 +18,10 @@ export async function GET(
     const user = await requireAuth();
     const role = await getUserRole(user.id);
     const supabase = await createClient();
-    const { id: orderId } = await params;
+    const { id: orderIdParam } = await params;
+
+    // Decodificar el parámetro de la URL
+    const orderId = decodeURIComponent(orderIdParam);
 
     if (!orderId) {
       return NextResponse.json(
@@ -32,16 +35,32 @@ export async function GET(
     }
 
     // Query base - RLS manejará los permisos
-    let query = supabase
-      .from("orders")
-      .select(
-        `
+    let query = supabase.from("orders").select(
+      `
         *,
         courier:couriers!assigned_courier_id(id, display_name, phone),
         customer:customers(id, name, phone)
       `
-      )
-      .eq("id", orderId);
+    );
+
+    // Buscar por ID (UUID) o por código
+    // Si el orderId parece ser un UUID, buscar por id
+    // Si no, buscar por code (removiendo el # si existe)
+    const isUUID =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        orderId
+      );
+
+    if (isUUID) {
+      console.log("[API /orders/[id]] Buscando por UUID:", orderId);
+      query = query.eq("id", orderId);
+    } else {
+      // Asegurar que el código tenga el # al inicio (como se guarda en la BD)
+      // Si el usuario ingresó sin #, agregarlo; si ya lo tiene, dejarlo
+      const codeToSearch = orderId.startsWith("#") ? orderId : `#${orderId}`;
+      console.log("[API /orders/[id]] Buscando por código:", codeToSearch);
+      query = query.eq("code", codeToSearch);
+    }
 
     // Si es business member, filtrar por business_id
     if (role.type === "business") {
@@ -52,13 +71,20 @@ export async function GET(
 
     const { data: order, error } = await query.single();
 
+    console.log("[API /orders/[id]] Resultado de la búsqueda:", {
+      order: order?.id || order?.code,
+      error,
+    });
+
     if (error || !order) {
+      console.log("[API /orders/[id]] Pedido no encontrado, error:", error);
       return NextResponse.json(
         { error: "Pedido no encontrado" },
         { status: 404 }
       );
     }
 
+    console.log("[API /orders/[id]] Pedido encontrado, retornando:", order.id);
     return NextResponse.json({ order });
   } catch (error: unknown) {
     console.error("GET /api/orders/[id] error:", error);
