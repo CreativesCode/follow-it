@@ -1,5 +1,6 @@
 "use client";
 
+import { BusinessDashboardClient } from "@/app/dashboard/BusinessDashboardClient";
 import { CourierTrackingIndicator } from "@/components/couriers/CourierTrackingIndicator";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
@@ -12,7 +13,8 @@ import { useEffect, useMemo, useState } from "react";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, userLoading, roleType, roleLoading, courier } = useAuth();
+  const { user, userLoading, roleType, roleLoading, courier, businessMember } =
+    useAuth();
 
   // Para mensajeros: obtener pedidos y tracking
   const { orders, loading: ordersLoading } = useOrders({
@@ -65,6 +67,17 @@ export default function DashboardPage() {
     );
   }
 
+  // Si es usuario negocio, mostrar el dashboard del negocio
+  if (roleType === "business" && businessMember?.business_id) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <main className="p-4 md:p-6 lg:p-8">
+          <BusinessDashboardClient businessId={businessMember.business_id} />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Main Content */}
@@ -76,368 +89,107 @@ export default function DashboardPage() {
               ¡Bienvenido al Dashboard!
             </h2>
             <p className="text-sm md:text-base text-gray-600">
-              {roleType === "business"
-                ? "Aquí podrás gestionar tus repartos, asignar mensajeros y monitorear entregas en tiempo real."
-                : "Aquí podrás ver tus asignaciones, actualizar estados y subir comprobantes de entrega."}
+              Aquí podrás ver tus asignaciones, actualizar estados y subir
+              comprobantes de entrega.
             </p>
           </div>
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            <div className="bg-white rounded-lg shadow p-4 md:p-6">
-              <div className="flex items-center">
-                <div className="shrink-0 bg-primary-100 rounded-lg p-2 md:p-3">
-                  <svg
-                    className="w-5 h-5 md:w-6 md:h-6 text-primary-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3 md:ml-4">
-                  <p className="text-xs md:text-sm font-medium text-gray-500">
-                    Pedidos Hoy
-                  </p>
-                  <p className="text-xl md:text-2xl font-bold text-gray-900">
-                    0
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-4 md:p-6">
-              <div className="flex items-center">
-                <div className="shrink-0 bg-secondary-100 rounded-lg p-2 md:p-3">
-                  <svg
-                    className="w-5 h-5 md:w-6 md:h-6 text-secondary-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3 md:ml-4">
-                  <p className="text-xs md:text-sm font-medium text-gray-500">
-                    Entregados
-                  </p>
-                  <p className="text-xl md:text-2xl font-bold text-gray-900">
-                    0
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow p-4 md:p-6">
-              <div className="flex items-center">
-                <div className="shrink-0 bg-yellow-100 rounded-lg p-2 md:p-3">
-                  <svg
-                    className="w-5 h-5 md:w-6 md:h-6 text-yellow-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <div className="ml-3 md:ml-4">
-                  <p className="text-xs md:text-sm font-medium text-gray-500">
-                    En Camino
-                  </p>
-                  <p className="text-xl md:text-2xl font-bold text-gray-900">
-                    0
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Coming Soon */}
-          <div className="bg-white rounded-lg shadow p-4 md:p-6">
-            <div className="text-center py-12">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+          {/* Contenido para mensajeros */}
+          {roleType === "courier" && (
+            <div className="space-y-6">
+              {/* Indicador de Tracking GPS */}
+              {courier && (
+                <CourierTrackingIndicator
+                  isTracking={isTracking}
+                  lastLocation={lastLocation}
+                  error={trackingError}
+                  offlineQueueSize={offlineQueueSize}
                 />
-              </svg>
-              <h3 className="mt-2 text-lg font-medium text-gray-900">
-                Panel en Construcción
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Estamos trabajando en las funcionalidades completas del
-                dashboard.
-              </p>
-              {roleType === "business" && (
-                <div className="mt-6">
-                  <p className="text-sm text-gray-600 mb-4">
-                    Funciones disponibles:
-                  </p>
-                  <div className="space-y-3 max-w-md mx-auto">
-                    <a
-                      href="/dashboard/orders"
-                      className="flex items-center justify-between p-3 md:p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors group touch-manipulation"
-                    >
-                      <div className="flex items-center">
-                        <svg
-                          className="w-5 h-5 text-primary-500 mr-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                          />
-                        </svg>
-                        <span className="font-medium text-gray-900">
-                          Gestionar Pedidos
-                        </span>
-                      </div>
-                      <svg
-                        className="w-5 h-5 text-gray-400 group-hover:text-primary-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </a>
-                    <a
-                      href="/dashboard/couriers"
-                      className="flex items-center justify-between p-3 md:p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors group touch-manipulation"
-                    >
-                      <div className="flex items-center">
-                        <svg
-                          className="w-5 h-5 text-primary-500 mr-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                          />
-                        </svg>
-                        <span className="font-medium text-gray-900">
-                          Gestionar Mensajeros
-                        </span>
-                      </div>
-                      <svg
-                        className="w-5 h-5 text-gray-400 group-hover:text-primary-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </a>
-                  </div>
-
-                  <p className="text-sm text-gray-600 mb-4 mt-6">
-                    Próximamente:
-                  </p>
-                  <ul className="text-sm text-left max-w-md mx-auto space-y-2">
-                    <li className="flex items-start">
-                      <svg
-                        className="w-5 h-5 text-green-500 mt-0.5 mr-2"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <span className="line-through text-gray-400">
-                        Crear y gestionar pedidos
-                      </span>
-                      <span className="ml-2 text-green-600 font-medium">
-                        ✓ Disponible
-                      </span>
-                    </li>
-                    <li className="flex items-start">
-                      <svg
-                        className="w-5 h-5 text-gray-400 mt-0.5 mr-2"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Asignar repartos a mensajeros
-                    </li>
-                    <li className="flex items-start">
-                      <svg
-                        className="w-5 h-5 text-gray-400 mt-0.5 mr-2"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Ver mapa en tiempo real
-                    </li>
-                    <li className="flex items-start">
-                      <svg
-                        className="w-5 h-5 text-gray-400 mt-0.5 mr-2"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Revisar comprobantes de entrega
-                    </li>
-                  </ul>
-                </div>
               )}
-              {roleType === "courier" && (
-                <div className="mt-6 space-y-6">
-                  {/* Indicador de Tracking GPS */}
-                  {courier && (
-                    <CourierTrackingIndicator
-                      isTracking={isTracking}
-                      lastLocation={lastLocation}
-                      error={trackingError}
-                      offlineQueueSize={offlineQueueSize}
-                    />
-                  )}
 
-                  {/* Pedidos Asignados */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                      Mis Pedidos
+              {/* Pedidos Asignados */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Mis Pedidos
+                </h3>
+
+                {ordersLoading ? (
+                  <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                    {[1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className="h-40 bg-gray-100 rounded-lg animate-pulse"
+                      />
+                    ))}
+                  </div>
+                ) : orders.length === 0 ? (
+                  <div className="text-center py-12 bg-white rounded-lg">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Package className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No tienes pedidos asignados
                     </h3>
-
-                    {ordersLoading ? (
-                      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                        {[1, 2, 3].map((i) => (
-                          <div
-                            key={i}
-                            className="h-40 bg-gray-100 rounded-lg animate-pulse"
-                          />
-                        ))}
-                      </div>
-                    ) : orders.length === 0 ? (
-                      <div className="text-center py-12 bg-white rounded-lg">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <Package className="w-8 h-8 text-gray-400" />
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">
-                          No tienes pedidos asignados
-                        </h3>
-                        <p className="text-gray-500">
-                          Cuando te asignen un pedido, aparecerá aquí
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        {activeOrders.length > 0 && (
-                          <div className="mb-4">
-                            <p className="text-sm text-gray-600 mb-2">
-                              Pedidos activos ({activeOrders.length})
-                            </p>
-                            <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                              {activeOrders.map((order) => (
-                                <OrderCard
-                                  key={order.id}
-                                  order={order}
-                                  onClick={() => setSelectedOrderId(order.id)}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {orders.filter(
-                          (o) =>
-                            o.status !== "assigned" && o.status !== "en_route"
-                        ).length > 0 && (
-                          <div>
-                            <p className="text-sm text-gray-600 mb-2">
-                              Otros pedidos (
-                              {
-                                orders.filter(
-                                  (o) =>
-                                    o.status !== "assigned" &&
-                                    o.status !== "en_route"
-                                ).length
-                              }
-                              )
-                            </p>
-                            <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                              {orders
-                                .filter(
-                                  (o) =>
-                                    o.status !== "assigned" &&
-                                    o.status !== "en_route"
-                                )
-                                .map((order) => (
-                                  <OrderCard
-                                    key={order.id}
-                                    order={order}
-                                    onClick={() => setSelectedOrderId(order.id)}
-                                  />
-                                ))}
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    )}
+                    <p className="text-gray-500">
+                      Cuando te asignen un pedido, aparecerá aquí
+                    </p>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <>
+                    {activeOrders.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-sm text-gray-600 mb-2">
+                          Pedidos activos ({activeOrders.length})
+                        </p>
+                        <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                          {activeOrders.map((order) => (
+                            <OrderCard
+                              key={order.id}
+                              order={order}
+                              onClick={() => setSelectedOrderId(order.id)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {orders.filter(
+                      (o) => o.status !== "assigned" && o.status !== "en_route"
+                    ).length > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-2">
+                          Otros pedidos (
+                          {
+                            orders.filter(
+                              (o) =>
+                                o.status !== "assigned" &&
+                                o.status !== "en_route"
+                            ).length
+                          }
+                          )
+                        </p>
+                        <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                          {orders
+                            .filter(
+                              (o) =>
+                                o.status !== "assigned" &&
+                                o.status !== "en_route"
+                            )
+                            .map((order) => (
+                              <OrderCard
+                                key={order.id}
+                                order={order}
+                                onClick={() => setSelectedOrderId(order.id)}
+                              />
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </main>
 

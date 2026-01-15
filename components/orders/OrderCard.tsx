@@ -1,6 +1,7 @@
 "use client";
 
 import type { OrderWithRelations } from "@/types/orders";
+import { useUserRole } from "@/lib/hooks/useUserRole";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { Clock, MapPin, Package, User } from "lucide-react";
@@ -13,6 +14,9 @@ type Props = {
 };
 
 export function OrderCard({ order, onClick, selected }: Props) {
+  const { type: roleType } = useUserRole();
+  const isCourier = roleType === "courier";
+
   const handleClick = () => {
     onClick?.();
   };
@@ -55,14 +59,16 @@ export function OrderCard({ order, onClick, selected }: Props) {
 
       {/* Footer: Mensajero + Tiempo */}
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-        {/* Mensajero asignado */}
-        <div className="flex items-center gap-1.5 text-sm text-gray-500">
-          <User className="w-4 h-4" />
-          <span>{order.courier?.display_name || "Sin asignar"}</span>
-        </div>
+        {/* Mensajero asignado - Solo mostrar si no es mensajero */}
+        {!isCourier && (
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <User className="w-4 h-4" />
+            <span>{order.courier?.display_name || "Sin asignar"}</span>
+          </div>
+        )}
 
         {/* Tiempo */}
-        <div className="flex items-center gap-1 text-xs text-gray-400">
+        <div className={`flex items-center gap-1 text-xs text-gray-400 ${isCourier ? "ml-auto" : ""}`}>
           <Clock className="w-3 h-3" />
           <span>
             {formatDistanceToNow(new Date(order.updated_at), {

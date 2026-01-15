@@ -14,11 +14,13 @@ import { useEffect, useState } from "react";
 
 type Props = {
   businessId: string;
+  roleType: "business" | "courier" | null;
 };
 
 type ViewMode = "list" | "kanban";
 
-export function OrdersPageClient({ businessId }: Props) {
+export function OrdersPageClient({ businessId, roleType }: Props) {
+  const isBusiness = roleType === "business";
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const searchParams = useSearchParams();
@@ -84,15 +86,17 @@ export function OrdersPageClient({ businessId }: Props) {
         </div>
 
         <div className="flex items-center gap-2 md:gap-3">
-          {/* Crear pedido */}
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="flex-1 md:flex-initial"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Nuevo Pedido</span>
-            <span className="sm:hidden">Nuevo</span>
-          </Button>
+          {/* Crear pedido - Solo para usuarios de negocio */}
+          {isBusiness && (
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="flex-1 md:flex-initial"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Nuevo Pedido</span>
+              <span className="sm:hidden">Nuevo</span>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -113,7 +117,10 @@ export function OrdersPageClient({ businessId }: Props) {
           ))}
         </div>
       ) : orders.length === 0 ? (
-        <EmptyState onCreateClick={() => setShowCreateModal(true)} />
+        <EmptyState
+          onCreateClick={() => setShowCreateModal(true)}
+          canCreate={isBusiness}
+        />
       ) : (
         <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {orders.map((order) => (
@@ -153,8 +160,8 @@ export function OrdersPageClient({ businessId }: Props) {
         </div>
       )}
 
-      {/* Modal crear pedido */}
-      {showCreateModal && (
+      {/* Modal crear pedido - Solo para usuarios de negocio */}
+      {showCreateModal && isBusiness && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm safe-area-inset">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-4 md:p-6 pb-6 md:pb-8">
@@ -194,7 +201,13 @@ export function OrdersPageClient({ businessId }: Props) {
   );
 }
 
-function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
+function EmptyState({
+  onCreateClick,
+  canCreate,
+}: {
+  onCreateClick: () => void;
+  canCreate: boolean;
+}) {
   return (
     <div className="text-center py-12">
       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -202,12 +215,16 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
       </div>
       <h3 className="text-lg font-medium text-gray-900 mb-2">No hay pedidos</h3>
       <p className="text-gray-500 mb-4">
-        Crea tu primer pedido para comenzar a gestionar entregas
+        {canCreate
+          ? "Crea tu primer pedido para comenzar a gestionar entregas"
+          : "No tienes pedidos asignados. Cuando te asignen un pedido, aparecerá aquí."}
       </p>
-      <Button onClick={onCreateClick}>
-        <Plus className="w-4 h-4 mr-2" />
-        Crear Pedido
-      </Button>
+      {canCreate && (
+        <Button onClick={onCreateClick}>
+          <Plus className="w-4 h-4 mr-2" />
+          Crear Pedido
+        </Button>
+      )}
     </div>
   );
 }

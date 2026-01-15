@@ -187,7 +187,7 @@ export function OrderDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm safe-area-inset">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
@@ -260,7 +260,7 @@ export function OrderDetailModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 pb-8">
+        <div className="flex-1 overflow-y-auto p-6 pb-8 safe-area-bottom">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { WifiOff, Cloud, Loader2 } from "lucide-react";
+import { Cloud, Loader2, WifiOff } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type Props = {
   pendingCount?: number;
@@ -41,8 +41,12 @@ export function OfflineIndicator({
       className={`
         fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-auto
         px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50
+        safe-area-bottom
         ${isOnline ? "bg-blue-500 text-white" : "bg-gray-800 text-white"}
       `}
+      style={{
+        marginBottom: "env(safe-area-inset-bottom)",
+      }}
     >
       {!isOnline ? (
         <>

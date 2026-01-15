@@ -23,7 +23,7 @@ export default async function OrdersPage() {
 
   return (
     <Suspense fallback={<OrdersPageSkeleton />}>
-      <OrdersPageClient businessId={businessId} />
+      <OrdersPageClient businessId={businessId} roleType={role.type} />
     </Suspense>
   );
 }

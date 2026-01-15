@@ -183,7 +183,7 @@ export function ProofCapture({ orderId, onSuccess, onCancel }: Props) {
   }, [orderId, startCamera, getLocation, stopCamera, onCancel]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black flex flex-col safe-area-inset">
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-black/50">
         <button onClick={handleCancel} className="text-white p-2">
@@ -222,7 +222,11 @@ export function ProofCapture({ orderId, onSuccess, onCancel }: Props) {
             }`}
           />
           <span className="text-white text-sm">
-            {gettingLocation ? "Obteniendo..." : location ? "GPS ✓" : "Sin GPS"}
+            {gettingLocation
+              ? "Obteniendo..."
+              : location
+              ? "GPS OK"
+              : "Sin GPS"}
           </span>
         </div>
 

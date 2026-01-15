@@ -180,7 +180,7 @@ function ProofViewer({
   }, [proof]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/90 flex flex-col safe-area-inset">
       {/* Header */}
       <div className="flex items-center justify-between p-4">
         <div className="text-white">

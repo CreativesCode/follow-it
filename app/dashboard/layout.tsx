@@ -48,7 +48,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <MobileHeader />
-        <main className="flex-1 overflow-y-auto pb-20 safe-area-bottom">
+        <main
+          className="flex-1 overflow-y-auto"
+          style={{
+            paddingBottom: "calc(6rem + env(safe-area-inset-bottom))",
+          }}
+        >
           {children}
         </main>
         <MobileBottomNav />
