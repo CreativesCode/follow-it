@@ -22,6 +22,7 @@ type Props = {
   currentStatus: OrderStatus;
   onStatusChange: () => void;
   isCourier: boolean;
+  onCaptureProof?: () => void;
 };
 
 // Función helper para verificar si hay acciones disponibles
@@ -38,6 +39,7 @@ export function OrderActions({
   currentStatus,
   onStatusChange,
   isCourier,
+  onCaptureProof,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -161,6 +163,19 @@ export function OrderActions({
           />
         </div>
       )}
+
+      {/* Botón para capturar proof */}
+      {onCaptureProof &&
+        (currentStatus === "assigned" || currentStatus === "en_route") && (
+          <Button
+            variant="outline"
+            onClick={onCaptureProof}
+            className="w-full justify-center py-3"
+          >
+            <Camera className="w-5 h-5 mr-2" />
+            Tomar Foto de Comprobante
+          </Button>
+        )}
 
       {/* Sugerencia de proof para delivered */}
       {currentStatus === "en_route" &&

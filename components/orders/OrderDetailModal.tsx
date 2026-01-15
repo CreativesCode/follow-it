@@ -1,5 +1,7 @@
 "use client";
 
+import { ProofCapture } from "@/components/proofs/ProofCapture";
+import { ProofGallery } from "@/components/proofs/ProofGallery";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { useOrder } from "@/lib/hooks/useOrder";
@@ -48,6 +50,7 @@ export function OrderDetailModal({
   const [copied, setCopied] = useState(false);
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [whatsappError, setWhatsappError] = useState<string | null>(null);
+  const [showProofCapture, setShowProofCapture] = useState(false);
 
   // Verificar si el usuario es el mensajero asignado
   const isCourier =
@@ -171,6 +174,12 @@ export function OrderDetailModal({
     } finally {
       setWhatsappLoading(false);
     }
+  };
+
+  const handleProofCaptureSuccess = async () => {
+    setShowProofCapture(false);
+    await refetch();
+    onOrderUpdate?.();
   };
 
   if (!orderId) {
@@ -446,23 +455,41 @@ export function OrderDetailModal({
                 </div>
               )}
 
-              {/* Acciones del mensajero */}
-              {isCourier && hasCourierActions(order.status, true) && (
+              {/* Comprobantes de entrega */}
+              {(isBusiness || isCourier) && order?.id && (
                 <div className="border-t pt-4">
                   <h3 className="text-md font-semibold text-gray-900 mb-4">
-                    Acciones
+                    Comprobantes de Entrega
                   </h3>
-                  <OrderActions
-                    orderId={order.id}
-                    currentStatus={order.status}
-                    onStatusChange={async () => {
-                      await refetch();
-                      onOrderUpdate?.();
-                    }}
-                    isCourier={true}
-                  />
+                  <ProofGallery orderId={order.id} />
                 </div>
               )}
+
+              {/* Acciones del mensajero */}
+              {isCourier &&
+                order &&
+                order.id &&
+                hasCourierActions(order.status, true) && (
+                  <div className="border-t pt-4">
+                    <h3 className="text-md font-semibold text-gray-900 mb-4">
+                      Acciones
+                    </h3>
+                    <OrderActions
+                      orderId={order.id}
+                      currentStatus={order.status}
+                      onStatusChange={async () => {
+                        await refetch();
+                        onOrderUpdate?.();
+                      }}
+                      isCourier={true}
+                      onCaptureProof={() => {
+                        if (order?.id) {
+                          setShowProofCapture(true);
+                        }
+                      }}
+                    />
+                  </div>
+                )}
 
               {/* Timeline de eventos */}
               <div className="border-t pt-4">
@@ -483,6 +510,15 @@ export function OrderDetailModal({
           businessId={businessId}
           onClose={() => setShowAssignModal(false)}
           onSuccess={handleAssignSuccess}
+        />
+      )}
+
+      {/* Modal de captura de proof */}
+      {order && order.id && showProofCapture && (
+        <ProofCapture
+          orderId={order.id}
+          onSuccess={handleProofCaptureSuccess}
+          onCancel={() => setShowProofCapture(false)}
         />
       )}
     </div>

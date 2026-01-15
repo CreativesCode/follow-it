@@ -13,7 +13,7 @@
 3. [Módulo: Pedidos (Orders)](#3-módulo-pedidos-orders-✅-completado) ✅
 4. [Módulo: Asignación de Mensajeros](#4-módulo-asignación)
 5. [Módulo: Transiciones de Estado](#5-módulo-transiciones)
-6. [Módulo: Comprobantes de Entrega (Proofs)](#6-módulo-proofs)
+6. [Módulo: Comprobantes de Entrega (Proofs)](#6-módulo-comprobantes-de-entrega-proofs-✅-completado) ✅
 7. [Módulo: Tracking GPS](#7-módulo-tracking-gps)
 8. [Módulo: Tracking Público (Cliente)](#8-módulo-tracking-público)
 9. [Módulo: Offline y Sincronización](#9-módulo-offline)
@@ -2410,7 +2410,7 @@ export function OrderActions({
 
 ---
 
-## 6. Módulo: Comprobantes de Entrega (Proofs)
+## 6. Módulo: Comprobantes de Entrega (Proofs) ✅ COMPLETADO
 
 ### 6.1 Flujo Completo de Proof
 
@@ -5488,12 +5488,13 @@ supabase/functions/
    - [x] Integración en OrderDetailModal para mensajeros
    - [x] Timeline de eventos
 
-4. **Fase 4: Proofs (1 semana)**
+4. **Fase 4: Proofs (1 semana)** ✅ COMPLETADO
 
-   - [ ] ProofCapture component
-   - [ ] Hook useProofCapture
-   - [ ] API Routes upload/confirm
-   - [ ] ProofGallery, ProofViewer
+   - [x] ProofCapture component
+   - [x] Hook useProofCapture
+   - [x] API Routes upload/confirm
+   - [x] API Route GET /api/orders/[id]/proofs (con autorización corregida)
+   - [x] ProofGallery, ProofViewer
 
 5. **Fase 5: Tracking GPS (1 semana)**
 
