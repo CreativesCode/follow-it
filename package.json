@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "cap:sync": "npx cap sync",
+    "cap:assets": "npx capacitor-assets generate --iconBackgroundColor \"#ffffff\" --splashBackgroundColor \"#ffffff\"",
     "cap:android": "npx cap open android",
     "cap:ios": "npx cap open ios",
     "supabase:start": "npx supabase start",
@@ -35,6 +36,7 @@
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.29",
     "@types/react": "^19",
