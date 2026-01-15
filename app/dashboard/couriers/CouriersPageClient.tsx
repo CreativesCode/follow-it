@@ -1,7 +1,9 @@
 "use client";
+import { CouriersMap } from "@/components/map/CouriersMap";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { FormInput } from "@/components/ui/FormInput";
+import { useRealtimeLocations } from "@/lib/hooks/useRealtimeLocations";
 import { useState } from "react";
 
 interface Courier {
@@ -47,6 +49,13 @@ export default function CouriersPageClient({
   const [success, setSuccess] = useState<string | null>(null);
   const [courierName, setCourierName] = useState("");
   const [courierEmail, setCourierEmail] = useState("");
+
+  // Obtener ubicaciones en tiempo real de los mensajeros
+  const {
+    couriers: couriersWithLocations,
+    loading: locationsLoading,
+    error: locationsError,
+  } = useRealtimeLocations(businessId);
 
   const createInvitation = async () => {
     setIsCreatingInvitation(true);
@@ -350,6 +359,45 @@ export default function CouriersPageClient({
               )}
             </div>
           </div>
+
+          {/* Mapa de Mensajeros en Tiempo Real - Después de la lista de mensajeros */}
+          {couriersWithLocations.length > 0 && (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="px-4 md:px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  📍 Ubicación en Tiempo Real
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Visualiza dónde están tus mensajeros en este momento
+                </p>
+              </div>
+              <div className="p-4">
+                {locationsLoading ? (
+                  <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                      <p className="text-sm text-gray-600">
+                        Cargando ubicaciones...
+                      </p>
+                    </div>
+                  </div>
+                ) : locationsError ? (
+                  <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <div className="text-center text-gray-500">
+                      <p className="text-sm">Error al cargar ubicaciones</p>
+                      <p className="text-xs mt-1">{locationsError}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <CouriersMap
+                    couriers={couriersWithLocations}
+                    height="500px"
+                    className="w-full"
+                  />
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Invitations */}
           <div className="bg-white rounded-lg shadow">

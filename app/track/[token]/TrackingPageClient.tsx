@@ -1,5 +1,6 @@
 "use client";
 
+import { OrderTrackingMap } from "@/components/map/OrderTrackingMap";
 import { PublicOrderTimeline } from "@/components/orders/PublicOrderTimeline";
 import { ORDER_STATUS_CONFIG } from "@/types/orders";
 import {
@@ -291,6 +292,30 @@ export function TrackingPageClient({ token }: Props) {
           </div>
         </div>
 
+        {/* Map (si hay ubicación del mensajero y está en camino) - Mostrar primero para mayor visibilidad */}
+        {snapshot.courier && snapshot.order.status === "en_route" && (
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="p-4 border-b">
+              <p className="text-sm font-medium text-gray-700">
+                📍 Ubicación del mensajero en tiempo real
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                Actualizado {formatRelativeTime(snapshot.courier.recorded_at)}
+              </p>
+            </div>
+            <div className="p-4">
+              <OrderTrackingMap
+                lat={snapshot.courier.lat}
+                lng={snapshot.courier.lng}
+                address={snapshot.order.dropoff_address}
+                accuracy={snapshot.courier.accuracy_m}
+                recordedAt={snapshot.courier.recorded_at}
+                className="h-64 w-full"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Delivery Address */}
         {snapshot.order.dropoff_address && (
           <div className="bg-white rounded-xl shadow-sm p-4">
@@ -304,29 +329,6 @@ export function TrackingPageClient({ token }: Props) {
                   {snapshot.order.dropoff_address}
                 </p>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Map (si hay ubicación del mensajero y está en camino) */}
-        {snapshot.courier && snapshot.order.status === "en_route" && (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="p-4 border-b">
-              <p className="text-sm text-gray-500">Ubicación del mensajero</p>
-              <p className="text-xs text-gray-400 mt-1">
-                Actualizado {formatRelativeTime(snapshot.courier.recorded_at)}
-              </p>
-            </div>
-            {/* Placeholder para mapa - integrar con Mapbox/Google Maps */}
-            <div className="h-48 bg-gray-100 flex items-center justify-center">
-              <a
-                href={`https://maps.google.com/?q=${snapshot.courier.lat},${snapshot.courier.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline text-sm"
-              >
-                Ver en Google Maps
-              </a>
             </div>
           </div>
         )}

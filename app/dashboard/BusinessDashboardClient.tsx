@@ -1,10 +1,12 @@
 "use client";
 
+import { CouriersMap } from "@/components/map/CouriersMap";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
 import { OrderForm } from "@/components/orders/OrderForm";
 import { Button } from "@/components/ui/Button";
 import { useOrders } from "@/lib/hooks/useOrders";
+import { useRealtimeLocations } from "@/lib/hooks/useRealtimeLocations";
 import { OrderFormData } from "@/types/orders";
 import {
   CheckCircle,
@@ -33,6 +35,13 @@ export function BusinessDashboardClient({ businessId }: Props) {
     status: "all",
     limit: 100, // Obtener más pedidos para estadísticas
   });
+
+  // Obtener ubicaciones en tiempo real de los mensajeros
+  const {
+    couriers: couriersWithLocations,
+    loading: locationsLoading,
+    error: locationsError,
+  } = useRealtimeLocations(businessId);
 
   // Calcular estadísticas
   const stats = useMemo(() => {
@@ -173,6 +182,45 @@ export function BusinessDashboardClient({ businessId }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Mapa de Mensajeros en Tiempo Real */}
+      {couriersWithLocations.length > 0 && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="px-4 md:px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">
+              📍 Mensajeros en Tiempo Real
+            </h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Visualiza dónde están tus mensajeros en este momento
+            </p>
+          </div>
+          <div className="p-4">
+            {locationsLoading ? (
+              <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+                  <p className="text-sm text-gray-600">
+                    Cargando ubicaciones...
+                  </p>
+                </div>
+              </div>
+            ) : locationsError ? (
+              <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
+                <div className="text-center text-gray-500">
+                  <p className="text-sm">Error al cargar ubicaciones</p>
+                  <p className="text-xs mt-1">{locationsError}</p>
+                </div>
+              </div>
+            ) : (
+              <CouriersMap
+                couriers={couriersWithLocations}
+                height="400px"
+                className="w-full"
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Pedidos que requieren atención */}
       {ordersNeedingAttention.length > 0 && (
