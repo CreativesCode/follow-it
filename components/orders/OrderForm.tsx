@@ -265,7 +265,7 @@ export function OrderForm({
       {error && <Alert variant="error">{error}</Alert>}
 
       {/* Botones */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t">
+      <div className="flex items-center justify-end gap-3 pt-4 border-t safe-area-bottom">
         <Button
           type="button"
           variant="ghost"

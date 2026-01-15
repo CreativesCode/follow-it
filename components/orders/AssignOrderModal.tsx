@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { X, Loader2, UserPlus } from "lucide-react";
 import { CourierSelect } from "@/components/couriers/CourierSelect";
-import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { Button } from "@/components/ui/Button";
 import type { OrderWithRelations } from "@/types/orders";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2, UserPlus, X } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 type Props = {
   order: OrderWithRelations;
@@ -35,8 +35,8 @@ export function AssignOrderModal({
   // Schema adaptado para el formulario (solo courier_id, opcional si ya está asignado)
   const formSchema = z.object({
     courier_id: isAssigned
-      ? z.string().uuid('ID de mensajero inválido').optional().nullable()
-      : z.string().uuid('ID de mensajero inválido'),
+      ? z.string().uuid("ID de mensajero inválido").optional().nullable()
+      : z.string().uuid("ID de mensajero inválido"),
   });
 
   const {
@@ -99,16 +99,18 @@ export function AssignOrderModal({
 
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Error al asignar mensajero";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 safe-area-inset">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
+    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50 safe-area-inset modal-container">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90dvh] overflow-hidden flex flex-col modal-content">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
@@ -123,7 +125,7 @@ export function AssignOrderModal({
         </div>
 
         {/* Content */}
-        <div className="p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 modal-form-content">
           {/* Info del pedido */}
           <div className="bg-gray-50 rounded-lg p-3">
             <p className="text-sm text-gray-500">Pedido</p>
@@ -153,11 +155,7 @@ export function AssignOrderModal({
           </div>
 
           {/* Error */}
-          {error && (
-            <Alert variant="error">
-              {error}
-            </Alert>
-          )}
+          {error && <Alert variant="error">{error}</Alert>}
         </div>
 
         {/* Footer */}
@@ -165,7 +163,10 @@ export function AssignOrderModal({
           <Button variant="ghost" onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit(onSubmit)} disabled={loading || !hasChanged}>
+          <Button
+            onClick={handleSubmit(onSubmit)}
+            disabled={loading || !hasChanged}
+          >
             {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {isAssigned && !courierId ? "Desasignar" : "Asignar"}
           </Button>

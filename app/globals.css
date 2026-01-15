@@ -111,6 +111,49 @@ select:disabled {
   padding-right: env(safe-area-inset-right);
 }
 
+/* Modal keyboard handling - usar dynamic viewport height */
+.modal-container {
+  max-height: 100dvh; /* Dynamic viewport height - se ajusta cuando aparece el teclado */
+  max-height: 100vh; /* Fallback para navegadores que no soportan dvh */
+}
+
+.modal-content {
+  max-height: calc(100dvh - 2rem); /* Restar padding del contenedor */
+  max-height: calc(100vh - 2rem); /* Fallback */
+}
+
+/* Asegurar que los modales con formularios tengan espacio para el teclado */
+.modal-with-form {
+  max-height: 100dvh;
+  max-height: 100vh; /* Fallback */
+}
+
+.modal-form-content {
+  max-height: calc(100dvh - 8rem); /* Espacio para header, footer y teclado */
+  max-height: calc(100vh - 8rem); /* Fallback */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: env(safe-area-inset-bottom);
+  /* Padding adicional para el teclado virtual (estimado ~300px en móviles) */
+  padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+}
+
+/* Mejorar el scroll en móviles cuando el teclado está activo */
+@media (max-width: 768px) {
+  .modal-form-content {
+    /* En móviles, usar más espacio para el teclado */
+    max-height: calc(100dvh - 12rem);
+    max-height: calc(100vh - 12rem); /* Fallback */
+  }
+  
+  /* Asegurar que los inputs estén visibles cuando el teclado aparece */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    scroll-margin-bottom: 1rem;
+  }
+}
+
 /* Touch manipulation for better mobile performance */
 .touch-manipulation {
   touch-action: manipulation;

@@ -154,7 +154,7 @@ export function OrderSearchModal({ isOpen, onClose, onOrderFound }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm safe-area-inset"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm safe-area-inset modal-container"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -162,10 +162,10 @@ export function OrderSearchModal({ isOpen, onClose, onOrderFound }: Props) {
       }}
     >
       <div
-        className="bg-white rounded-xl shadow-xl w-full max-w-md"
+        className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90dvh] overflow-hidden flex flex-col modal-content"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto p-6 modal-form-content">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900">
