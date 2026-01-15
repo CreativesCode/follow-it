@@ -187,14 +187,14 @@ export function OrderDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm safe-area-inset modal-container">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90dvh] max-h-[90vh] overflow-hidden flex flex-col modal-content">
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm safe-area-inset modal-container">
+      <div className="bg-white rounded-t-2xl md:rounded-xl shadow-xl w-full md:max-w-4xl h-[95dvh] md:max-h-[90dvh] overflow-hidden flex flex-col modal-content">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+        <div className="flex items-center justify-between p-4 md:p-6 border-b shrink-0">
           <div className="flex items-center gap-4">
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition-colors touch-manipulation"
             >
               <X className="w-5 h-5 text-gray-500" />
             </button>
@@ -211,11 +211,16 @@ export function OrderDetailModal({
                 </p>
               </div>
             ) : (
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Pedido {order.code || `#${order.id.slice(0, 8)}`}
-                </h2>
-                <p className="text-sm text-gray-500 mt-1">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-lg md:text-xl font-semibold text-gray-900 truncate">
+                    Pedido {order.code || `#${order.id.slice(0, 8)}`}
+                  </h2>
+                  {order && !isEditing && (
+                    <OrderStatusBadge status={order.status} size="sm" />
+                  )}
+                </div>
+                <p className="text-xs md:text-sm text-gray-500 mt-1">
                   Creado{" "}
                   {new Date(order.created_at).toLocaleDateString("es-ES", {
                     year: "numeric",
@@ -230,8 +235,7 @@ export function OrderDetailModal({
           </div>
 
           {order && !isEditing && isBusiness && (
-            <div className="flex items-center gap-3">
-              <OrderStatusBadge status={order.status} size="md" />
+            <div className="flex items-center gap-2 md:gap-3 shrink-0">
               {!["delivered", "canceled"].includes(order.status) && (
                 <>
                   {(order.status === "pending" ||
@@ -239,31 +243,42 @@ export function OrderDetailModal({
                     <Button
                       variant="outline"
                       onClick={() => setShowAssignModal(true)}
+                      className="text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2"
                     >
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      {order.status === "assigned" ? "Cambiar" : "Asignar"}
+                      <UserPlus className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+                      <span className="hidden md:inline">
+                        {order.status === "assigned" ? "Cambiar" : "Asignar"}
+                      </span>
                     </Button>
                   )}
-                  <Button variant="outline" onClick={() => setIsEditing(true)}>
-                    <Edit className="w-4 h-4 mr-2" />
-                    Editar
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditing(true)}
+                    className="text-xs md:text-sm px-2 md:px-3 py-1.5 md:py-2"
+                  >
+                    <Edit className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+                    <span className="hidden md:inline">Editar</span>
                   </Button>
                 </>
               )}
             </div>
           )}
           {order && !isEditing && isCourier && (
-            <div className="flex items-center gap-3">
-              <OrderStatusBadge status={order.status} size="md" />
+            <div className="flex items-center gap-3 shrink-0">
+              <OrderStatusBadge status={order.status} size="sm" />
             </div>
           )}
         </div>
 
         {/* Content */}
         <div
-          className={`flex-1 overflow-y-auto p-6 pb-8 safe-area-bottom ${
+          className={`flex-1 overflow-y-auto overscroll-contain p-4 md:p-6 pb-6 md:pb-8 safe-area-bottom ${
             isEditing ? "modal-form-content" : ""
           }`}
+          style={{
+            paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
+            WebkitOverflowScrolling: "touch",
+          }}
         >
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -300,13 +315,13 @@ export function OrderDetailModal({
               />
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-5 md:space-y-6">
               {/* Información básica */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-3 md:mb-4">
                   Información del Pedido
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <div>
                     <p className="text-sm text-gray-500 mb-1">
                       Dirección de Entrega
@@ -341,11 +356,11 @@ export function OrderDetailModal({
 
               {/* Cliente */}
               {order.customer && (
-                <div className="border-t pt-4">
-                  <h3 className="text-md font-semibold text-gray-900 mb-3">
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-3">
                     Cliente
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                     {order.customer.name && (
                       <div>
                         <p className="text-sm text-gray-500 mb-1">Nombre</p>
@@ -364,8 +379,8 @@ export function OrderDetailModal({
 
               {/* Mensajero asignado (solo para business members) */}
               {order.courier && isBusiness && (
-                <div className="border-t pt-4">
-                  <h3 className="text-md font-semibold text-gray-900 mb-3">
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-3">
                     Mensajero
                   </h3>
                   <p className="text-gray-900">{order.courier.display_name}</p>
@@ -379,8 +394,8 @@ export function OrderDetailModal({
 
               {/* Notas */}
               {order.notes && (
-                <div className="border-t pt-4">
-                  <h3 className="text-md font-semibold text-gray-900 mb-3">
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-3">
                     Notas
                   </h3>
                   <p className="text-gray-700 whitespace-pre-wrap">
@@ -391,8 +406,8 @@ export function OrderDetailModal({
 
               {/* Link de tracking (solo para business members) */}
               {isBusiness && (
-                <div className="border-t pt-4">
-                  <h3 className="text-md font-semibold text-gray-900 mb-4">
+                <div className="border-t pt-4 mt-4">
+                  <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-3 md:mb-4">
                     Link de Seguimiento
                   </h3>
                   <div className="space-y-3">
@@ -461,8 +476,8 @@ export function OrderDetailModal({
 
               {/* Comprobantes de entrega */}
               {(isBusiness || isCourier) && order?.id && (
-                <div className="border-t pt-4">
-                  <h3 className="text-md font-semibold text-gray-900 mb-4">
+                <div className="border-t pt-4 mt-4 pb-4">
+                  <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-3 md:mb-4">
                     Comprobantes de Entrega
                   </h3>
                   <ProofGallery orderId={order.id} />
@@ -474,8 +489,8 @@ export function OrderDetailModal({
                 order &&
                 order.id &&
                 hasCourierActions(order.status, true) && (
-                  <div className="border-t pt-4">
-                    <h3 className="text-md font-semibold text-gray-900 mb-4">
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-3 md:mb-4">
                       Acciones
                     </h3>
                     <OrderActions
@@ -496,8 +511,8 @@ export function OrderDetailModal({
                 )}
 
               {/* Timeline de eventos */}
-              <div className="border-t pt-4">
-                <h3 className="text-md font-semibold text-gray-900 mb-4">
+              <div className="border-t pt-4 mt-4 pb-2">
+                <h3 className="text-sm md:text-base font-semibold text-gray-900 mb-3 md:mb-4">
                   Historial de Eventos
                 </h3>
                 <OrderTimeline orderId={order.id} />
