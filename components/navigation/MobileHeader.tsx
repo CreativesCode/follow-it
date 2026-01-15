@@ -2,6 +2,7 @@
 import { useUser } from "@/lib/hooks/useUser";
 import { useUserRole } from "@/lib/hooks/useUserRole";
 import { Menu } from "lucide-react";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 type Props = {
   title?: string;
@@ -30,6 +31,7 @@ export function MobileHeader({ title, onMenuClick }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <NotificationDropdown />
           <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded">
             {roleType === "business" ? "Negocio" : "Mensajero"}
           </span>

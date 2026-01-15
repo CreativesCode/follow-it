@@ -233,6 +233,179 @@ Deno.serve(async (req) => {
       details: evErr.message,
     });
 
+  // Notificaciones in-app para miembros del negocio cuando cambia el estado del pedido
+  // Notificar para todos los estados importantes: assigned, en_route, delivered, failed, canceled
+  console.log(
+    `[NOTIFICATIONS] Status change: ${from_status} -> ${to_status}, checking if notifications needed...`
+  );
+
+  if (
+    ["assigned", "en_route", "delivered", "failed", "canceled"].includes(
+      to_status
+    )
+  ) {
+    console.log(
+      `[NOTIFICATIONS] Status ${to_status} requires notifications, creating...`
+    );
+    try {
+      console.log(
+        `[NOTIFICATIONS] Starting notification creation process for order ${order_id}, business ${order.business_id}`
+      );
+
+      // Obtener todos los miembros activos del negocio
+      const { data: businessMembers, error: membersError } = await admin
+        .from("business_members")
+        .select("user_id")
+        .eq("business_id", order.business_id)
+        .eq("is_active", true);
+
+      if (membersError) {
+        console.error("Error fetching business members for notifications:", {
+          error: membersError,
+          businessId: order.business_id,
+          orderId: order_id,
+          toStatus: to_status,
+        });
+      } else if (!businessMembers || businessMembers.length === 0) {
+        console.log(
+          `No active business members found for business ${order.business_id}`
+        );
+      } else {
+        console.log(
+          `[NOTIFICATIONS] Found ${businessMembers.length} active business members for business ${order.business_id}`
+        );
+
+        // Obtener detalles del pedido para la notificación
+        const { data: orderDetails, error: orderDetailsError } = await admin
+          .from("orders")
+          .select("code, assigned_courier_id")
+          .eq("id", order_id)
+          .single();
+
+        if (orderDetailsError) {
+          console.error(
+            "[NOTIFICATIONS] Error fetching order details:",
+            orderDetailsError
+          );
+        }
+
+        const orderCode = orderDetails?.code || `#${order_id.slice(0, 8)}`;
+
+        // Obtener nombre del mensajero si está asignado
+        let courierName: string | null = null;
+        if (orderDetails?.assigned_courier_id) {
+          const { data: courierData } = await admin
+            .from("couriers")
+            .select("display_name")
+            .eq("id", orderDetails.assigned_courier_id)
+            .maybeSingle();
+          courierName = courierData?.display_name || null;
+        }
+
+        // Determinar título y cuerpo según el estado
+        let title: string;
+        let body: string;
+        let type: string;
+
+        switch (to_status) {
+          case "assigned":
+            title = "Pedido asignado";
+            body = courierName
+              ? `El pedido ${orderCode} fue asignado a ${courierName}`
+              : `El pedido ${orderCode} fue asignado`;
+            type = "order_assigned";
+            break;
+          case "en_route":
+            title = "Pedido en camino";
+            body = `El pedido ${orderCode} está en camino`;
+            type = "order_en_route";
+            break;
+          case "delivered":
+            title = "Pedido entregado";
+            body = `El pedido ${orderCode} ha sido entregado`;
+            type = "order_delivered";
+            break;
+          case "failed":
+            title = "Pedido fallido";
+            body = `El pedido ${orderCode} falló${note ? `: ${note}` : ""}`;
+            type = "order_failed";
+            break;
+          case "canceled":
+            title = "Pedido cancelado";
+            body = `El pedido ${orderCode} fue cancelado`;
+            type = "order_canceled";
+            break;
+          default:
+            title = "Estado del pedido actualizado";
+            body = `El pedido ${orderCode} cambió a ${to_status}`;
+            type = "order_status_changed";
+        }
+
+        // Crear notificaciones para todos los miembros del negocio
+        const notifications = businessMembers.map((member) => ({
+          user_id: member.user_id,
+          title,
+          body,
+          type,
+          data: {
+            order_id: order_id,
+            order_code: orderCode,
+            from_status,
+            to_status,
+            courier_name: courierName,
+          },
+        }));
+
+        console.log(
+          `[NOTIFICATIONS] Attempting to insert ${notifications.length} notifications for order ${order_id} status change to ${to_status}`
+        );
+
+        // Insertar notificaciones directamente en la base de datos (exactamente igual que en assign/route.ts)
+        const { error: insertError } = await admin
+          .from("notifications")
+          .insert(notifications);
+
+        if (insertError) {
+          console.error("[NOTIFICATIONS] Error inserting notifications:", {
+            error: insertError,
+            errorMessage: insertError.message,
+            errorCode: insertError.code,
+            orderId: order_id,
+            toStatus: to_status,
+            notificationsCount: notifications.length,
+            businessId: order.business_id,
+            firstNotification: notifications[0],
+          });
+        } else {
+          console.log(
+            `[NOTIFICATIONS] Successfully created ${notifications.length} notifications for business members (order ${order_id}, status: ${to_status})`
+          );
+        }
+      }
+    } catch (notifError) {
+      console.error(
+        "[NOTIFICATIONS] Exception creating business notifications:",
+        {
+          error: notifError,
+          errorMessage:
+            notifError instanceof Error
+              ? notifError.message
+              : String(notifError),
+          errorStack:
+            notifError instanceof Error ? notifError.stack : undefined,
+          orderId: order_id,
+          toStatus: to_status,
+          businessId: order.business_id,
+        }
+      );
+      // No fallar por esto
+    }
+  } else {
+    console.log(
+      `[NOTIFICATIONS] Status ${to_status} does not require notifications`
+    );
+  }
+
   // Notificación por WhatsApp al cliente (si aplica)
   // Solo para estados importantes: en_route, delivered, failed
   if (["en_route", "delivered", "failed"].includes(to_status)) {

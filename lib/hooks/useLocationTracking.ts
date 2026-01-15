@@ -260,12 +260,51 @@ export function useLocationTracking(
   // Manejar nueva posición
   const handlePosition = useCallback(
     (position: GeolocationPosition) => {
+      // Validar y limitar accuracy_m (máximo 10000 metros según validación)
+      let accuracy_m: number | undefined = undefined;
+      if (
+        position.coords.accuracy !== null &&
+        position.coords.accuracy !== undefined &&
+        !isNaN(position.coords.accuracy) &&
+        isFinite(position.coords.accuracy) &&
+        position.coords.accuracy >= 0
+      ) {
+        // Limitar a máximo 10000 metros
+        accuracy_m = Math.min(position.coords.accuracy, 10000);
+      }
+
+      // Validar y limitar speed_mps (máximo 100 m/s según validación)
+      let speed_mps: number | undefined = undefined;
+      if (
+        position.coords.speed !== null &&
+        position.coords.speed !== undefined &&
+        !isNaN(position.coords.speed) &&
+        isFinite(position.coords.speed) &&
+        position.coords.speed >= 0
+      ) {
+        // Limitar a máximo 100 m/s (~360 km/h)
+        speed_mps = Math.min(position.coords.speed, 100);
+      }
+
+      // Validar heading (0-360)
+      let heading: number | undefined = undefined;
+      if (
+        position.coords.heading !== null &&
+        position.coords.heading !== undefined &&
+        !isNaN(position.coords.heading) &&
+        isFinite(position.coords.heading) &&
+        position.coords.heading >= 0 &&
+        position.coords.heading <= 360
+      ) {
+        heading = position.coords.heading;
+      }
+
       const ping: LocationPing = {
         lat: position.coords.latitude,
         lng: position.coords.longitude,
-        accuracy_m: position.coords.accuracy,
-        speed_mps: position.coords.speed ?? undefined,
-        heading: position.coords.heading ?? undefined,
+        accuracy_m,
+        speed_mps,
+        heading,
         recorded_at: new Date().toISOString(),
       };
 

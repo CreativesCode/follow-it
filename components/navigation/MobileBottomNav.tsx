@@ -51,8 +51,12 @@ export function MobileBottomNav() {
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
           const Icon = item.icon;
+          // Para /dashboard, solo activo si es exactamente /dashboard
+          // Para otras rutas, activo si coincide exactamente o empieza con la ruta + "/"
           const isActive =
-            pathname === item.path || pathname.startsWith(item.path + "/");
+            item.path === "/dashboard"
+              ? pathname === item.path
+              : pathname === item.path || pathname.startsWith(item.path + "/");
 
           return (
             <button

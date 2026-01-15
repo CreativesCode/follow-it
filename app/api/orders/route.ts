@@ -187,6 +187,77 @@ export async function POST(request: NextRequest) {
       created_by: user.id,
     });
 
+    // Crear notificaciones para todos los miembros activos del negocio
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/server-admin");
+      const admin = createAdminClient();
+
+      // Obtener todos los miembros activos del negocio
+      const { data: businessMembers, error: membersError } = await admin
+        .from("business_members")
+        .select("user_id")
+        .eq("business_id", businessMember.business_id)
+        .eq("is_active", true);
+
+      if (membersError) {
+        console.error(
+          "Error fetching business members for notifications:",
+          membersError
+        );
+      } else if (!businessMembers || businessMembers.length === 0) {
+        console.log(
+          `No active business members found for business ${businessMember.business_id}`
+        );
+      } else {
+        const orderCode = order.code || `#${order.id.slice(0, 8)}`;
+
+        // Crear notificaciones para todos los miembros del negocio
+        const notifications = businessMembers.map((member) => ({
+          user_id: member.user_id,
+          title: "Nuevo pedido creado",
+          body: `Se creó el pedido ${orderCode}`,
+          type: "order_created",
+          data: {
+            order_id: order.id,
+            order_code: orderCode,
+            status: "pending",
+          },
+        }));
+
+        console.log(
+          `Attempting to insert ${notifications.length} notifications for order ${order.id}`
+        );
+
+        // Insertar notificaciones directamente en la base de datos
+        const { data: insertedNotifications, error: insertError } = await admin
+          .from("notifications")
+          .insert(notifications)
+          .select();
+
+        if (insertError) {
+          console.error("Error inserting notifications for new order:", {
+            error: insertError,
+            orderId: order.id,
+            notificationsCount: notifications.length,
+            businessId: businessMember.business_id,
+          });
+        } else {
+          console.log(
+            `Successfully created ${
+              insertedNotifications?.length || 0
+            } notifications for new order ${order.id}`
+          );
+        }
+      }
+    } catch (notifError) {
+      console.error("Error creating notifications for new order:", {
+        error: notifError,
+        orderId: order.id,
+        businessId: businessMember.business_id,
+      });
+      // No fallar por esto
+    }
+
     return NextResponse.json({ order }, { status: 201 });
   } catch (error: unknown) {
     console.error("POST /api/orders error:", error);

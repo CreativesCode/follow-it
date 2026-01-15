@@ -5,6 +5,7 @@ export interface SendNotificationParams {
   user_id: string;
   title: string;
   body: string;
+  type?: string; // e.g., 'order_assigned', 'order_delivered', etc.
   data?: Record<string, unknown>;
 }
 

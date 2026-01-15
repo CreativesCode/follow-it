@@ -6,6 +6,7 @@ type Payload = {
   user_id: string;
   title: string;
   body: string;
+  type?: string; // e.g., 'order_assigned', 'order_status_changed', etc.
   data?: Record<string, unknown>;
 };
 
@@ -30,7 +31,7 @@ Deno.serve(async (req) => {
     return badRequest("Invalid JSON body");
   }
 
-  const { user_id, title, body, data } = payload ?? ({} as Payload);
+  const { user_id, title, body, type, data } = payload ?? ({} as Payload);
   if (!user_id || typeof user_id !== "string")
     return badRequest("user_id is required");
   if (!title || typeof title !== "string")
@@ -38,6 +39,34 @@ Deno.serve(async (req) => {
   if (!body || typeof body !== "string") return badRequest("body is required");
 
   const admin = supabaseAdmin();
+
+  // Save notification to database first
+  const { data: insertedNotification, error: notificationError } = await admin
+    .from("notifications")
+    .insert({
+      user_id,
+      title,
+      body,
+      type: type || null,
+      data: data || {},
+    })
+    .select()
+    .single();
+
+  if (notificationError) {
+    console.error("Error saving notification to database:", {
+      error: notificationError,
+      user_id,
+      title,
+      body,
+      type,
+    });
+    // Continue anyway - we still want to try sending push notifications
+  } else {
+    console.log(
+      `Successfully inserted notification ${insertedNotification?.id} for user ${user_id}`
+    );
+  }
 
   // Get all active device tokens for the user
   const { data: tokens, error: tokensError } = await admin

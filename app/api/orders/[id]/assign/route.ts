@@ -26,7 +26,7 @@ export async function POST(
     // 1. Verificar que el pedido existe y está pending
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("id, status, business_id, code")
+      .select("id, status, business_id, code, dropoff_address")
       .eq("id", orderId)
       .eq("business_id", businessMember.business_id)
       .single();
@@ -96,9 +96,131 @@ export async function POST(
       // No fallar por esto, el pedido ya se actualizó
     }
 
-    // 5. Notificación: Se envía automáticamente vía Supabase Realtime
-    // El mensajero recibirá la notificación en tiempo real si tiene la app abierta
-    // (gratis, sin configuración adicional necesaria)
+    // 5. Notificaciones
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/server-admin");
+      const admin = createAdminClient();
+      const orderCode = order.code || `#${orderId.slice(0, 8)}`;
+
+      // 5a. Notificación al mensajero (insertar directamente en BD)
+      const { error: courierNotifError } = await admin
+        .from("notifications")
+        .insert({
+          user_id: courier.user_id,
+          title: "Nuevo pedido asignado",
+          body: `Se te asignó el pedido ${orderCode}`,
+          type: "order_assigned",
+          data: {
+            order_id: orderId,
+            order_code: orderCode,
+            dropoff_address: order.dropoff_address,
+          },
+        });
+
+      if (courierNotifError) {
+        console.error("Error inserting notification for courier:", {
+          error: courierNotifError,
+          courierUserId: courier.user_id,
+          orderId: orderId,
+        });
+      } else {
+        console.log(
+          `Successfully created notification for courier ${courier.user_id}`
+        );
+      }
+
+      // 5b. Notificaciones a miembros del negocio (insertar directamente en BD)
+      const { data: businessMembers, error: membersError } = await admin
+        .from("business_members")
+        .select("user_id")
+        .eq("business_id", businessMember.business_id)
+        .eq("is_active", true);
+
+      if (!membersError && businessMembers && businessMembers.length > 0) {
+        const notifications = businessMembers.map((member) => ({
+          user_id: member.user_id,
+          title: "Pedido asignado",
+          body: `El pedido ${orderCode} fue asignado a ${courier.display_name}`,
+          type: "order_assigned",
+          data: {
+            order_id: orderId,
+            order_code: orderCode,
+            courier_id: courier_id,
+            courier_name: courier.display_name,
+          },
+        }));
+
+        const { error: insertError } = await admin
+          .from("notifications")
+          .insert(notifications);
+
+        if (insertError) {
+          console.error("Error inserting notifications for business members:", {
+            error: insertError,
+            orderId: orderId,
+            notificationsCount: notifications.length,
+            businessId: businessMember.business_id,
+          });
+        } else {
+          console.log(
+            `Successfully created ${notifications.length} notifications for business members`
+          );
+        }
+      }
+
+      // 5c. También enviar push notifications (si están configuradas)
+      try {
+        const { sendPushNotification } = await import(
+          "@/lib/utils/notifications"
+        );
+
+        // Enviar push al mensajero
+        await sendPushNotification({
+          user_id: courier.user_id,
+          title: "Nuevo pedido asignado",
+          body: `Se te asignó el pedido ${orderCode}`,
+          type: "order_assigned",
+          data: {
+            order_id: orderId,
+            order_code: orderCode,
+            dropoff_address: order.dropoff_address,
+          },
+        });
+
+        // Enviar push a miembros del negocio en paralelo (no bloquea si falla)
+        if (businessMembers && businessMembers.length > 0) {
+          Promise.all(
+            businessMembers.map((member) =>
+              sendPushNotification({
+                user_id: member.user_id,
+                title: "Pedido asignado",
+                body: `El pedido ${orderCode} fue asignado a ${courier.display_name}`,
+                type: "order_assigned",
+                data: {
+                  order_id: orderId,
+                  order_code: orderCode,
+                  courier_id: courier_id,
+                  courier_name: courier.display_name,
+                },
+              }).catch((err) => {
+                console.error(
+                  `Error sending push to business member ${member.user_id}:`,
+                  err
+                );
+              })
+            )
+          ).catch((err) => {
+            console.error("Error sending push notifications:", err);
+          });
+        }
+      } catch (pushError) {
+        console.error("Error sending push notifications:", pushError);
+        // No fallar por esto, las notificaciones in-app ya se insertaron
+      }
+    } catch (notifError) {
+      console.error("Error creating notifications:", notifError);
+      // No fallar por esto
+    }
 
     // 6. Notificación por WhatsApp al mensajero (opcional, no bloquea)
     try {
