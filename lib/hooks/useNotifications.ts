@@ -1,7 +1,11 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { useCallback, useEffect, useState } from "react";
+import type {
+  RealtimeChannel,
+  RealtimePostgresChangesPayload,
+} from "@supabase/supabase-js";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface Notification {
   id: string;
@@ -29,6 +33,8 @@ export function useNotifications(): UseNotificationsReturn {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const userIdRef = useRef<string | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -36,7 +42,7 @@ export function useNotifications(): UseNotificationsReturn {
       setError(null);
 
       const response = await fetch("/api/notifications?limit=50");
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error("Error fetching notifications:", {
@@ -45,13 +51,14 @@ export function useNotifications(): UseNotificationsReturn {
           error: errorData,
         });
         throw new Error(
-          errorData.error || `Error al obtener notificaciones (${response.status})`
+          errorData.error ||
+            `Error al obtener notificaciones (${response.status})`
         );
       }
 
       const data = await response.json();
       const notificationsList = data.notifications || [];
-      
+
       console.log(`Fetched ${notificationsList.length} notifications`);
       setNotifications(notificationsList);
     } catch (err) {
@@ -114,36 +121,54 @@ export function useNotifications(): UseNotificationsReturn {
     }
   };
 
+  // Set up realtime subscription
   useEffect(() => {
     let mounted = true;
-    let channel: ReturnType<ReturnType<typeof createClient>["channel"]> | null = null;
     const supabase = createClient();
 
     const setupRealtime = async () => {
+      // Get current user
       const {
         data: { user },
         error: authError,
       } = await supabase.auth.getUser();
 
-      if (authError) {
+      if (!mounted) return;
+
+      if (authError || !user) {
         console.error("Error getting user for notifications:", authError);
+        if (mounted) {
+          setIsLoading(false);
+        }
         return;
       }
 
-      if (!user || !mounted) {
-        console.log("No user or component unmounted, skipping notification setup");
-        return;
-      }
-
-      console.log(`Setting up notifications for user: ${user.id}`);
+      userIdRef.current = user.id;
+      console.log(`Setting up notifications realtime for user: ${user.id}`);
 
       // Fetch initial notifications
-      await fetchNotifications();
+      if (mounted) {
+        await fetchNotifications();
+      }
+
+      if (!mounted) return;
+
+      // Clean up any existing channel
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
 
       // Set up realtime subscription for new notifications
-      channel = supabase
-        .channel(`notifications:${user.id}`)
-        .on(
+      const channel = supabase
+        .channel(`notifications:${user.id}`, {
+          config: {
+            presence: {
+              key: user.id,
+            },
+          },
+        })
+        .on<Notification>(
           "postgres_changes",
           {
             event: "INSERT",
@@ -151,15 +176,22 @@ export function useNotifications(): UseNotificationsReturn {
             table: "notifications",
             filter: `user_id=eq.${user.id}`,
           },
-          (payload) => {
-            if (mounted) {
-              console.log("New notification received:", payload.new);
-              // Add new notification to the list
-              setNotifications((prev) => [payload.new as Notification, ...prev]);
-            }
+          (payload: RealtimePostgresChangesPayload<Notification>) => {
+            if (!mounted) return;
+            console.log("New notification received via realtime:", payload.new);
+            setNotifications((prev) => {
+              // Evitar duplicados
+              const exists = prev.find((n) => n.id === payload.new.id);
+              if (exists) {
+                console.log("Notification already exists, skipping duplicate");
+                return prev;
+              }
+              // Agregar al inicio de la lista
+              return [payload.new, ...prev];
+            });
           }
         )
-        .on(
+        .on<Notification>(
           "postgres_changes",
           {
             event: "UPDATE",
@@ -167,32 +199,52 @@ export function useNotifications(): UseNotificationsReturn {
             table: "notifications",
             filter: `user_id=eq.${user.id}`,
           },
-          (payload) => {
-            if (mounted) {
-              console.log("Notification updated:", payload.new);
-              // Update notification in the list
-              setNotifications((prev) =>
-                prev.map((notif) =>
-                  notif.id === payload.new.id ? (payload.new as Notification) : notif
-                )
-              );
-            }
+          (payload: RealtimePostgresChangesPayload<Notification>) => {
+            if (!mounted) return;
+            console.log("Notification updated via realtime:", payload.new);
+            setNotifications((prev) =>
+              prev.map((notif) =>
+                notif.id === payload.new.id ? payload.new : notif
+              )
+            );
           }
         )
         .subscribe((status) => {
-          console.log(`Notification channel subscription status: ${status}`);
+          if (!mounted) return;
+          console.log(`Notifications realtime subscription status: ${status}`);
+          if (status === "SUBSCRIBED") {
+            console.log("✅ Successfully subscribed to notifications realtime");
+            setError(null);
+          } else if (status === "CHANNEL_ERROR") {
+            console.error("❌ Error subscribing to notifications realtime");
+            setError("Error al conectar con notificaciones en tiempo real");
+          } else if (status === "TIMED_OUT") {
+            console.warn("⏱️ Timeout subscribing to notifications realtime");
+            setError("Timeout al conectar con notificaciones en tiempo real");
+          }
         });
+
+      if (mounted) {
+        channelRef.current = channel;
+      } else {
+        // Component unmounted while setting up, clean up immediately
+        supabase.removeChannel(channel);
+      }
     };
 
     setupRealtime();
 
     return () => {
       mounted = false;
-      if (channel) {
-        supabase.removeChannel(channel);
+      // Cleanup: remove channel on unmount
+      if (channelRef.current) {
+        console.log("Cleaning up notifications channel");
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
+      userIdRef.current = null;
     };
-  }, [fetchNotifications]);
+  }, []); // Empty dependency array - only run once on mount
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 

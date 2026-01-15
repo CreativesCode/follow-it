@@ -73,3 +73,6 @@ create trigger set_notification_read_at_trigger
 
 comment on table public.notifications is 
   'Stores in-app notifications for users. Notifications are created when system events occur.';
+
+-- Enable Realtime for notifications table
+alter publication supabase_realtime add table public.notifications;
