@@ -4,6 +4,8 @@
 import { OrderStatus, ProofType } from "./database";
 
 export * from "./database";
+// Exportar tipos específicos de location (CourierLocation ya está en database)
+export type { CourierWithLocation, LocationPing } from "./location";
 
 // Tipos de utilidad
 export interface ApiResponse<T = unknown> {

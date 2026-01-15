@@ -1,14 +1,46 @@
 "use client";
 
+import { CourierTrackingIndicator } from "@/components/couriers/CourierTrackingIndicator";
+import { OrderCard } from "@/components/orders/OrderCard";
+import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
+import { useLocationTracking } from "@/lib/hooks/useLocationTracking";
+import { useOrders } from "@/lib/hooks/useOrders";
 import { useUser } from "@/lib/hooks/useUser";
 import { useUserRole } from "@/lib/hooks/useUserRole";
+import { Package } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
-  const { type: roleType, loading: roleLoading } = useUserRole();
+  const { type: roleType, loading: roleLoading, courier } = useUserRole();
+
+  // Para mensajeros: obtener pedidos y tracking
+  const { orders, loading: ordersLoading } = useOrders({
+    status: "all", // Ver todos los estados
+  });
+
+  // Filtrar pedidos activos (assigned o en_route)
+  const activeOrders = useMemo(
+    () =>
+      orders.filter(
+        (order) => order.status === "assigned" || order.status === "en_route"
+      ),
+    [orders]
+  );
+
+  const hasActiveOrders = activeOrders.length > 0;
+
+  // Hook de tracking GPS (solo para mensajeros)
+  const {
+    isTracking,
+    lastLocation,
+    error: trackingError,
+    offlineQueueSize,
+  } = useLocationTracking(roleType === "courier" ? hasActiveOrders : false);
+
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (userLoading || roleLoading) return;
@@ -311,74 +343,118 @@ export default function DashboardPage() {
                 </div>
               )}
               {roleType === "courier" && (
-                <div className="mt-6">
-                  <p className="text-sm text-gray-600 mb-4">
-                    Próximamente podrás:
-                  </p>
-                  <ul className="text-sm text-left max-w-md mx-auto space-y-2">
-                    <li className="flex items-start">
-                      <svg
-                        className="w-5 h-5 text-secondary-500 mt-0.5 mr-2"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Ver pedidos asignados
-                    </li>
-                    <li className="flex items-start">
-                      <svg
-                        className="w-5 h-5 text-secondary-500 mt-0.5 mr-2"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Actualizar estados de entrega
-                    </li>
-                    <li className="flex items-start">
-                      <svg
-                        className="w-5 h-5 text-secondary-500 mt-0.5 mr-2"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Subir fotos de comprobantes
-                    </li>
-                    <li className="flex items-start">
-                      <svg
-                        className="w-5 h-5 text-secondary-500 mt-0.5 mr-2"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Ver ruta optimizada del día
-                    </li>
-                  </ul>
+                <div className="mt-6 space-y-6">
+                  {/* Indicador de Tracking GPS */}
+                  {courier && (
+                    <CourierTrackingIndicator
+                      isTracking={isTracking}
+                      lastLocation={lastLocation}
+                      error={trackingError}
+                      offlineQueueSize={offlineQueueSize}
+                    />
+                  )}
+
+                  {/* Pedidos Asignados */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Mis Pedidos
+                    </h3>
+
+                    {ordersLoading ? (
+                      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                        {[1, 2, 3].map((i) => (
+                          <div
+                            key={i}
+                            className="h-40 bg-gray-100 rounded-lg animate-pulse"
+                          />
+                        ))}
+                      </div>
+                    ) : orders.length === 0 ? (
+                      <div className="text-center py-12 bg-white rounded-lg">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Package className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                          No tienes pedidos asignados
+                        </h3>
+                        <p className="text-gray-500">
+                          Cuando te asignen un pedido, aparecerá aquí
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        {activeOrders.length > 0 && (
+                          <div className="mb-4">
+                            <p className="text-sm text-gray-600 mb-2">
+                              Pedidos activos ({activeOrders.length})
+                            </p>
+                            <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                              {activeOrders.map((order) => (
+                                <OrderCard
+                                  key={order.id}
+                                  order={order}
+                                  onClick={() => setSelectedOrderId(order.id)}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {orders.filter(
+                          (o) =>
+                            o.status !== "assigned" && o.status !== "en_route"
+                        ).length > 0 && (
+                          <div>
+                            <p className="text-sm text-gray-600 mb-2">
+                              Otros pedidos (
+                              {
+                                orders.filter(
+                                  (o) =>
+                                    o.status !== "assigned" &&
+                                    o.status !== "en_route"
+                                ).length
+                              }
+                              )
+                            </p>
+                            <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                              {orders
+                                .filter(
+                                  (o) =>
+                                    o.status !== "assigned" &&
+                                    o.status !== "en_route"
+                                )
+                                .map((order) => (
+                                  <OrderCard
+                                    key={order.id}
+                                    order={order}
+                                    onClick={() => setSelectedOrderId(order.id)}
+                                  />
+                                ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
       </main>
+
+      {/* Modal detalle pedido (para mensajeros) */}
+      {roleType === "courier" && selectedOrderId && courier && (
+        <OrderDetailModal
+          key={selectedOrderId}
+          orderId={selectedOrderId}
+          businessId={courier.business_id}
+          onClose={() => setSelectedOrderId(null)}
+          onOrderUpdate={() => {
+            // Refetch se maneja automáticamente por useOrders
+          }}
+        />
+      )}
     </div>
   );
 }

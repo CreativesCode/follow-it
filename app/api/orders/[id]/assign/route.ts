@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireBusinessRole } from "@/lib/utils/auth";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export async function POST(
     // 1. Verificar que el pedido existe y está pending
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("id, status, business_id")
+      .select("id, status, business_id, code")
       .eq("id", orderId)
       .eq("business_id", businessMember.business_id)
       .single();
@@ -48,7 +48,7 @@ export async function POST(
     // 2. Verificar que el courier existe y pertenece al negocio
     const { data: courier, error: courierError } = await supabase
       .from("couriers")
-      .select("id, display_name, is_active")
+      .select("id, display_name, is_active, user_id")
       .eq("id", courier_id)
       .eq("business_id", businessMember.business_id)
       .single();
@@ -96,11 +96,9 @@ export async function POST(
       // No fallar por esto, el pedido ya se actualizó
     }
 
-    // 5. TODO: Enviar push notification al mensajero
-    // await sendPushNotification(courier.user_id, {
-    //   title: 'Nuevo pedido asignado',
-    //   body: `Se te asignó el pedido ${order.code}`,
-    // });
+    // 5. Notificación: Se envía automáticamente vía Supabase Realtime
+    // El mensajero recibirá la notificación en tiempo real si tiene la app abierta
+    // (gratis, sin configuración adicional necesaria)
 
     return NextResponse.json({
       success: true,
@@ -118,7 +116,10 @@ export async function POST(
       error.name === "ZodError"
     ) {
       return NextResponse.json(
-        { error: "Datos inválidos", details: "errors" in error ? error.errors : [] },
+        {
+          error: "Datos inválidos",
+          details: "errors" in error ? error.errors : [],
+        },
         { status: 400 }
       );
     }
@@ -130,10 +131,7 @@ export async function POST(
 }
 
 // DELETE /api/orders/[id]/assign - Desasignar
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE({ params }: { params: Promise<{ id: string }> }) {
   try {
     const { user, businessMember } = await requireBusinessRole();
     const supabase = await createClient();

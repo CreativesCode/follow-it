@@ -1344,7 +1344,9 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
 │  INSERT order_events (type: 'order_assigned')               │
 │       │                                                     │
 │       ▼                                                     │
-│  (Opcional) Push notification al mensajero                  │
+│  Notificación Realtime (automática)                        │
+│  └─> App mensajero recibe actualización en tiempo real      │
+│  └─> Muestra toast/notificación visual                     │
 │       │                                                     │
 │       ▼                                                     │
 │  PEDIDO (assigned) ✓                                        │
@@ -1371,12 +1373,12 @@ const assignSchema = z.object({
 // POST /api/orders/[id]/assign
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { user, businessMember } = await requireBusinessRole();
     const supabase = await createClient();
-    const orderId = params.id;
+    const { id: orderId } = await params;
 
     // Validar body
     const body = await request.json();
@@ -1385,7 +1387,7 @@ export async function POST(
     // 1. Verificar que el pedido existe y está pending
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("id, status, business_id")
+      .select("id, status, business_id, code")
       .eq("id", orderId)
       .eq("business_id", businessMember.business_id)
       .single();
@@ -1407,7 +1409,7 @@ export async function POST(
     // 2. Verificar que el courier existe y pertenece al negocio
     const { data: courier, error: courierError } = await supabase
       .from("couriers")
-      .select("id, display_name, is_active")
+      .select("id, display_name, is_active, user_id")
       .eq("id", courier_id)
       .eq("business_id", businessMember.business_id)
       .single();
@@ -1455,11 +1457,10 @@ export async function POST(
       // No fallar por esto, el pedido ya se actualizó
     }
 
-    // 5. TODO: Enviar push notification al mensajero
-    // await sendPushNotification(courier.user_id, {
-    //   title: 'Nuevo pedido asignado',
-    //   body: `Se te asignó el pedido ${order.code}`,
-    // });
+    // 5. Notificación: Se envía automáticamente vía Supabase Realtime
+    // El mensajero recibirá la notificación en tiempo real si tiene la app abierta
+    // (gratis, sin configuración adicional necesaria)
+    // Ver: lib/hooks/useCourierNotifications.ts
 
     return NextResponse.json({
       success: true,
@@ -1467,32 +1468,39 @@ export async function POST(
       courier_id: courier_id,
       status: "assigned",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST /api/orders/[id]/assign error:", error);
 
-    if (error.name === "ZodError") {
+    if (
+      error &&
+      typeof error === "object" &&
+      "name" in error &&
+      error.name === "ZodError"
+    ) {
       return NextResponse.json(
-        { error: "Datos inválidos", details: error.errors },
+        {
+          error: "Datos inválidos",
+          details: "errors" in error ? error.errors : [],
+        },
         { status: 400 }
       );
     }
 
-    return NextResponse.json(
-      { error: error.message || "Error al asignar pedido" },
-      { status: 500 }
-    );
+    const errorMessage =
+      error instanceof Error ? error.message : "Error al asignar pedido";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
 // DELETE /api/orders/[id]/assign - Desasignar
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { user, businessMember } = await requireBusinessRole();
     const supabase = await createClient();
-    const orderId = params.id;
+    const { id: orderId } = await params;
 
     // 1. Verificar pedido
     const { data: order, error: orderError } = await supabase
@@ -1548,10 +1556,9 @@ export async function DELETE(
     });
   } catch (error: any) {
     console.error("DELETE /api/orders/[id]/assign error:", error);
-    return NextResponse.json(
-      { error: error.message || "Error al desasignar pedido" },
-      { status: 500 }
-    );
+    const errorMessage =
+      error instanceof Error ? error.message : "Error al desasignar pedido";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 ```
@@ -4961,7 +4968,14 @@ export function OfflineIndicator({
 │  Tabla: order_events                                        │
 │  Filter: courier_id = <myCourierId>                         │
 │  Events: INSERT                                             │
-│  Uso: Confirmaciones                                        │
+│  Uso: Notificaciones de asignación (Realtime)              │
+│                                                             │
+│  NOTIFICACIONES:                                            │
+│  └─> Hook: useCourierNotifications                          │
+│  └─> Provider: CourierNotificationProvider                  │
+│  └─> Componente: OrderAssignmentToast                       │
+│  └─> Método: Supabase Realtime (GRATIS)                     │
+│  └─> Funciona: Mientras la app esté abierta                 │
 │                                                             │
 │  ─────────────────────────────────────────────────────────  │
 │                                                             │
@@ -5155,6 +5169,156 @@ export function useRealtimeOrderEvents({
   }, [businessId, orderId, courierId, enabled, handleEvent]);
 }
 ```
+
+---
+
+### 10.4 Hook: useCourierNotifications ✅ IMPLEMENTADO
+
+**Archivo: `lib/hooks/useCourierNotifications.ts`**
+
+Hook para que los mensajeros reciban notificaciones cuando se les asigna un pedido. Usa **Supabase Realtime (GRATIS)** - funciona mientras la app esté abierta.
+
+```typescript
+"use client";
+
+import { useEffect, useCallback, useRef } from "react";
+import { createClient } from "@/lib/supabase/client";
+import type {
+  RealtimePostgresChangesPayload,
+  RealtimeChannel,
+} from "@supabase/supabase-js";
+
+interface Order {
+  id: string;
+  code: string | null;
+  status: string;
+  assigned_courier_id: string | null;
+  dropoff_address: string;
+}
+
+interface UseCourierNotificationsOptions {
+  courierId: string;
+  onNewAssignment?: (order: Order) => void;
+  enabled?: boolean;
+}
+
+/**
+ * Hook para que los mensajeros reciban notificaciones cuando se les asigna un pedido.
+ * Usa Supabase Realtime (gratis) - funciona mientras la app esté abierta.
+ */
+export function useCourierNotifications({
+  courierId,
+  onNewAssignment,
+  enabled = true,
+}: UseCourierNotificationsOptions) {
+  const channelRef = useRef<RealtimeChannel | null>(null);
+
+  useEffect(() => {
+    if (!enabled || !courierId) return;
+
+    const supabase = createClient();
+
+    // Escuchar cambios en pedidos que se asignan a este mensajero
+    const channel = supabase
+      .channel(`courier-notifications-${courierId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
+          filter: `assigned_courier_id=eq.${courierId}`,
+        },
+        (payload: RealtimePostgresChangesPayload<Order>) => {
+          const order = payload.new as Order;
+          const oldOrder = payload.old as Order;
+
+          // Solo notificar si el pedido cambió a "assigned" y antes no estaba asignado
+          if (
+            order.status === "assigned" &&
+            order.assigned_courier_id === courierId &&
+            oldOrder.assigned_courier_id !== courierId
+          ) {
+            onNewAssignment?.(order);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "order_events",
+          filter: `courier_id=eq.${courierId}`,
+        },
+        (payload: RealtimePostgresChangesPayload<OrderEvent>) => {
+          // Notificar cuando se crea un evento de asignación
+          const event = payload.new as OrderEvent;
+          if (
+            event &&
+            "type" in event &&
+            event.type === "order_assigned" &&
+            event.courier_id === courierId
+          ) {
+            // Obtener el pedido para mostrar detalles
+            supabase
+              .from("orders")
+              .select("id, code, status, dropoff_address")
+              .eq("id", event.order_id)
+              .single()
+              .then(({ data: order }) => {
+                if (order) {
+                  onNewAssignment?.(order as Order);
+                }
+              });
+          }
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [courierId, enabled, onNewAssignment]);
+
+  return {
+    unsubscribe: () => {
+      /* cleanup */
+    },
+  };
+}
+```
+
+**Uso con Provider (Recomendado):**
+
+```typescript
+// En la app del mensajero
+import { CourierNotificationProvider } from "@/components/notifications/CourierNotificationProvider";
+
+<CourierNotificationProvider courierId={courierId}>
+  {/* Tu app aquí */}
+</CourierNotificationProvider>;
+```
+
+**Componentes relacionados:**
+
+- `components/notifications/CourierNotificationProvider.tsx` - Provider que maneja todo automáticamente
+- `components/notifications/OrderAssignmentToast.tsx` - Toast visual cuando llega un pedido
+
+**Ventajas:**
+
+- ✅ 100% Gratis (Supabase Realtime incluido)
+- ✅ Tiempo real instantáneo
+- ✅ Sin configuración adicional
+- ✅ Funciona en web y móvil
+
+**Limitación:**
+
+- Solo funciona mientras la app esté abierta (no es push nativo del sistema)
+
+**Documentación completa:** Ver `docs/NOTIFICATIONS_REALTIME.md`
 
 ---
 
@@ -5480,6 +5644,8 @@ supabase/functions/
    - [x] API Route asignar/desasignar
    - [x] Integración con lista de pedidos
    - [x] Hook useCouriers
+   - [x] Notificaciones Realtime para mensajeros (useCourierNotifications)
+   - [x] CourierNotificationProvider y OrderAssignmentToast
 
 3. **Fase 3: Transiciones (3-5 días)**
 
@@ -5496,14 +5662,22 @@ supabase/functions/
    - [x] API Route GET /api/orders/[id]/proofs (con autorización corregida)
    - [x] ProofGallery, ProofViewer
 
-5. **Fase 5: Tracking GPS (1 semana)**
+5. **Fase 5: Notificaciones (Completado)** ✅ COMPLETADO
+
+   - [x] Hook useCourierNotifications (Supabase Realtime)
+   - [x] CourierNotificationProvider
+   - [x] OrderAssignmentToast component
+   - [x] Integración con asignación de pedidos
+   - [x] Documentación en docs/NOTIFICATIONS_REALTIME.md
+
+6. **Fase 6: Tracking GPS (1 semana)**
 
    - [ ] Hook useLocationTracking
    - [ ] API Route locations
    - [ ] Hook useRealtimeLocations
    - [ ] Mapa en dashboard
 
-6. **Fase 6: Tracking Público (3-5 días)**
+7. **Fase 6: Tracking Público (3-5 días)**
 
    - [x] Página /track/[token]
    - [x] API Route crear link
@@ -5511,7 +5685,7 @@ supabase/functions/
    - [x] Timeline de eventos en tracking público
    - [x] Estados completados coloreados en timeline visual
 
-7. **Fase 7: Offline y Polish (1 semana)**
+8. **Fase 7: Offline y Polish (1 semana)**
    - [ ] Hook useOfflineQueue
    - [ ] OfflineIndicator
    - [ ] Realtime subscriptions

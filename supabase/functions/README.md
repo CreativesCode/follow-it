@@ -5,11 +5,13 @@ Este directorio contiene las Edge Functions de Supabase para el sistema de gesti
 ## 📋 Funciones Disponibles
 
 ### 1. `change_order_status`
+
 Cambia el estado de un pedido con validación de transiciones y permisos.
 
 **Endpoint:** `POST /functions/v1/change_order_status`
 
 **Payload:**
+
 ```json
 {
   "order_id": "uuid",
@@ -20,6 +22,7 @@ Cambia el estado de un pedido con validación de transiciones y permisos.
 ```
 
 **Respuesta:**
+
 ```json
 {
   "order_id": "uuid",
@@ -30,11 +33,13 @@ Cambia el estado de un pedido con validación de transiciones y permisos.
 ```
 
 ### 2. `assign_order`
+
 Asigna un pedido a un mensajero.
 
 **Endpoint:** `POST /functions/v1/assign_order`
 
 **Payload:**
+
 ```json
 {
   "order_id": "uuid",
@@ -43,6 +48,7 @@ Asigna un pedido a un mensajero.
 ```
 
 **Respuesta:**
+
 ```json
 {
   "order_id": "uuid",
@@ -52,11 +58,13 @@ Asigna un pedido a un mensajero.
 ```
 
 ### 3. `get_tracking_snapshot`
+
 Obtiene información de tracking público para un cliente (sin autenticación).
 
 **Endpoint:** `GET /functions/v1/get_tracking_snapshot?token=<token>`
 
 **Respuesta:**
+
 ```json
 {
   "order": {
@@ -76,11 +84,13 @@ Obtiene información de tracking público para un cliente (sin autenticación).
 ```
 
 ### 4. `create_tracking_link`
+
 Crea un link de tracking público para un pedido.
 
 **Endpoint:** `POST /functions/v1/create_tracking_link`
 
 **Payload:**
+
 ```json
 {
   "order_id": "uuid",
@@ -89,6 +99,7 @@ Crea un link de tracking público para un pedido.
 ```
 
 **Respuesta:**
+
 ```json
 {
   "tracking_link_id": "uuid",
@@ -99,11 +110,53 @@ Crea un link de tracking público para un pedido.
 ```
 
 ### 5. `create_proof_upload`
+
 Genera una URL firmada para subir un comprobante (foto/firma).
+
+### 6. `send_push_notification`
+
+Envía notificaciones push a los dispositivos de un usuario.
+
+**Endpoint:** `POST /functions/v1/send_push_notification`
+
+**Autenticación:** Requiere `SUPABASE_SERVICE_ROLE_KEY` en el header `Authorization: Bearer <service_role_key>`
+
+**Payload:**
+
+```json
+{
+  "user_id": "uuid",
+  "title": "string",
+  "body": "string",
+  "data": {
+    "type": "order_assigned",
+    "order_id": "uuid",
+    "courier_id": "uuid"
+  }
+}
+```
+
+**Respuesta:**
+
+```json
+{
+  "sent": true,
+  "tokens_checked": 2,
+  "results": {
+    "ios": { "sent": 1, "failed": 0 },
+    "android": { "sent": 1, "failed": 0 },
+    "web": { "sent": 0, "failed": 0 }
+  },
+  "message": "Notification queued for delivery"
+}
+```
+
+**Nota:** Esta función actualmente prepara la estructura para FCM (Android) y APNS (iOS), pero requiere configuración adicional de credenciales para funcionar completamente.
 
 **Endpoint:** `POST /functions/v1/create_proof_upload`
 
 **Payload:**
+
 ```json
 {
   "order_id": "uuid",
@@ -112,6 +165,7 @@ Genera una URL firmada para subir un comprobante (foto/firma).
 ```
 
 **Respuesta:**
+
 ```json
 {
   "order_id": "uuid",
@@ -145,6 +199,7 @@ npx supabase functions deploy <nombre_funcion>
 ### Opción 3: Desplegar con variables de entorno
 
 Las funciones usan automáticamente las variables de entorno de Supabase:
+
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `SUPABASE_ANON_KEY`
@@ -210,13 +265,16 @@ supabase/functions/
 ## 🐛 Troubleshooting
 
 ### Error: "Entrypoint path does not exist"
+
 - Verifica que el archivo `index.ts` existe en la carpeta de la función
 - Asegúrate de estar en el directorio raíz del proyecto
 
 ### Error: "Docker is not running"
+
 - Solo necesario para desarrollo local
 - Para producción, usa `npx supabase functions deploy` directamente
 
 ### Error de importación
+
 - Verifica que los archivos en `_shared/` existen
 - Las rutas deben ser relativas: `../_shared/supabase.ts`
