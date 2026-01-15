@@ -140,8 +140,35 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Obtener la URL de la imagen OpenGraph para los meta tags manuales
+  const siteUrl = getSiteUrl();
+  const ogImageUrl = `${siteUrl}/opengraph.jpg`;
+
   return (
     <html lang="es">
+      <head>
+        {/* Meta tags adicionales para mayor compatibilidad con WhatsApp */}
+        {/* WhatsApp a veces usa estos en lugar de los generados por Next.js */}
+        <meta property="og:image" content={ogImageUrl} />
+        <meta property="og:image:secure_url" content={ogImageUrl} />
+        <meta property="og:image:type" content="image/jpeg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta
+          property="og:image:alt"
+          content="Follow It - Gestión de Repartos"
+        />
+
+        {/* Meta tags de Twitter Card adicionales */}
+        <meta name="twitter:image" content={ogImageUrl} />
+        <meta
+          name="twitter:image:alt"
+          content="Follow It - Gestión de Repartos"
+        />
+
+        {/* Link alternativo a la imagen (algunas veces ayuda) */}
+        <link rel="image_src" href={ogImageUrl} />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

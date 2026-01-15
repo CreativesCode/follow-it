@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "verify:og": "node scripts/verify-og.js",
     "cap:sync": "npx cap sync",
     "cap:assets": "npx capacitor-assets generate --iconBackgroundColor \"#ffffff\" --splashBackgroundColor \"#ffffff\"",
     "cap:android": "npx cap open android",
