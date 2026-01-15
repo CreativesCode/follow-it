@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { formInputBase } from '@/lib/utils/formStyles';
+import { orderFiltersSchema } from '@/lib/validations/order';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 import type { OrderFilters, OrderStatus } from '@/types/orders';
 import { ORDER_STATUS_CONFIG } from '@/types/orders';
 
@@ -17,6 +20,55 @@ export function OrderFilters({ filters, onFilterChange }: Props) {
   
   const statuses: (OrderStatus | 'all')[] = ['all', 'pending', 'assigned', 'en_route', 'delivered', 'failed', 'canceled'];
   
+  const {
+    register,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(orderFiltersSchema),
+    defaultValues: {
+      search: filters.search || '',
+      status: filters.status || 'all',
+      date_from: filters.date_from || '',
+      date_to: filters.date_to || '',
+    },
+  });
+
+  const searchValue = watch('search');
+  const statusValue = watch('status');
+  const dateFromValue = watch('date_from');
+  const dateToValue = watch('date_to');
+
+  // Sincronizar cambios del formulario con el callback
+  useEffect(() => {
+    const subscription = watch((value) => {
+      onFilterChange({
+        search: value.search || undefined,
+        status: value.status || undefined,
+        date_from: value.date_from || undefined,
+        date_to: value.date_to || undefined,
+      });
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, onFilterChange]);
+
+  // Sincronizar cambios externos al formulario
+  useEffect(() => {
+    if (filters.search !== searchValue) {
+      setValue('search', filters.search || '');
+    }
+    if (filters.status !== statusValue) {
+      setValue('status', filters.status || 'all');
+    }
+    if (filters.date_from !== dateFromValue) {
+      setValue('date_from', filters.date_from || '');
+    }
+    if (filters.date_to !== dateToValue) {
+      setValue('date_to', filters.date_to || '');
+    }
+  }, [filters, setValue, searchValue, statusValue, dateFromValue, dateToValue]);
+  
   return (
     <div className="space-y-4">
       {/* Barra de búsqueda */}
@@ -26,10 +78,12 @@ export function OrderFilters({ filters, onFilterChange }: Props) {
           <input
             type="text"
             placeholder="Buscar por código, dirección..."
-            value={filters.search || ''}
-            onChange={(e) => onFilterChange({ search: e.target.value })}
-            className={`${formInputBase} pl-10`}
+            {...register('search')}
+            className={`${formInputBase} pl-10 ${errors.search ? 'border-red-500' : ''}`}
           />
+          {errors.search && (
+            <p className="mt-1 text-sm text-red-500">{errors.search.message}</p>
+          )}
         </div>
         
         <Button
@@ -44,7 +98,12 @@ export function OrderFilters({ filters, onFilterChange }: Props) {
         {(filters.status !== 'all' || filters.courier_id !== 'all' || filters.date_from || filters.date_to) && (
           <Button
             variant="ghost"
-            onClick={() => onFilterChange({ status: 'all', courier_id: 'all', date_from: undefined, date_to: undefined })}
+            onClick={() => {
+              setValue('status', 'all');
+              setValue('date_from', '');
+              setValue('date_to', '');
+              onFilterChange({ status: 'all', courier_id: 'all', date_from: undefined, date_to: undefined });
+            }}
             className="flex items-center gap-2"
           >
             <X className="w-4 h-4" />
@@ -65,10 +124,14 @@ export function OrderFilters({ filters, onFilterChange }: Props) {
               {statuses.map(status => (
                 <button
                   key={status}
-                  onClick={() => onFilterChange({ status })}
+                  type="button"
+                  onClick={() => {
+                    setValue('status', status);
+                    onFilterChange({ status });
+                  }}
                   className={`
                     px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
-                    ${filters.status === status
+                    ${statusValue === status
                       ? 'bg-blue-500 text-white'
                       : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
                     }
@@ -78,6 +141,9 @@ export function OrderFilters({ filters, onFilterChange }: Props) {
                 </button>
               ))}
             </div>
+            {errors.status && (
+              <p className="mt-1 text-sm text-red-500">{errors.status.message}</p>
+            )}
           </div>
           
           {/* Filtro por fecha */}
@@ -88,10 +154,12 @@ export function OrderFilters({ filters, onFilterChange }: Props) {
               </label>
               <input
                 type="date"
-                value={filters.date_from || ''}
-                onChange={(e) => onFilterChange({ date_from: e.target.value || undefined })}
-                className={formInputBase}
+                {...register('date_from')}
+                className={`${formInputBase} ${errors.date_from ? 'border-red-500' : ''}`}
               />
+              {errors.date_from && (
+                <p className="mt-1 text-sm text-red-500">{errors.date_from.message}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -99,10 +167,12 @@ export function OrderFilters({ filters, onFilterChange }: Props) {
               </label>
               <input
                 type="date"
-                value={filters.date_to || ''}
-                onChange={(e) => onFilterChange({ date_to: e.target.value || undefined })}
-                className={formInputBase}
+                {...register('date_to')}
+                className={`${formInputBase} ${errors.date_to ? 'border-red-500' : ''}`}
               />
+              {errors.date_to && (
+                <p className="mt-1 text-sm text-red-500">{errors.date_to.message}</p>
+              )}
             </div>
           </div>
         </div>

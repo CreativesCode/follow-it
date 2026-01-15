@@ -122,11 +122,13 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
           },
           (payload: RealtimePostgresChangesPayload<Order>) => {
             if (!mounted) return;
-            console.log('Order updated via realtime:', payload.new);
+            if (!payload.new) return;
+            const updatedOrderData = payload.new as Order;
+            console.log('Order updated via realtime:', updatedOrderData);
             
             // Actualizar orden específica en el estado local
             setOrders((prev) => {
-              const index = prev.findIndex((o) => o.id === payload.new.id);
+              const index = prev.findIndex((o) => o.id === updatedOrderData.id);
               
               // Si la orden no está en la lista actual (puede ser por paginación/filtros)
               if (index === -1) {
@@ -136,7 +138,7 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
               }
               
               // Verificar si la orden actualizada sigue cumpliendo los filtros
-              const updatedOrder = { ...prev[index], ...payload.new } as OrderWithRelations;
+              const updatedOrder = { ...prev[index], ...updatedOrderData } as OrderWithRelations;
               
               // Si los filtros excluyen esta orden, removerla de la lista
               if (filtersState.status && filtersState.status !== 'all' && updatedOrder.status !== filtersState.status) {
@@ -160,10 +162,12 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
           },
           (payload: RealtimePostgresChangesPayload<Order>) => {
             if (!mounted) return;
-            console.log('Order deleted via realtime:', payload.old);
+            if (!payload.old) return;
+            const deletedOrder = payload.old as Order;
+            console.log('Order deleted via realtime:', deletedOrder);
             
             // Remover orden de la lista
-            setOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
+            setOrders((prev) => prev.filter((o) => o.id !== deletedOrder.id));
           }
         )
         .subscribe((status) => {

@@ -5,6 +5,9 @@ import { X, Loader2, UserPlus } from "lucide-react";
 import { CourierSelect } from "@/components/couriers/CourierSelect";
 import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import type { OrderWithRelations } from "@/types/orders";
 
 type Props = {
@@ -14,23 +17,45 @@ type Props = {
   onSuccess: () => void;
 };
 
+type AssignFormInput = {
+  courier_id: string | null | undefined;
+};
+
 export function AssignOrderModal({
   order,
   businessId,
   onClose,
   onSuccess,
 }: Props) {
-  const [courierId, setCourierId] = useState<string | null>(
-    order.assigned_courier_id || null
-  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isAssigned = order.status === "assigned";
-  const hasChanged = courierId !== (order.assigned_courier_id || null);
 
-  const handleSubmit = async () => {
-    if (!courierId && !isAssigned) {
+  // Schema adaptado para el formulario (solo courier_id, opcional si ya está asignado)
+  const formSchema = z.object({
+    courier_id: isAssigned
+      ? z.string().uuid('ID de mensajero inválido').optional().nullable()
+      : z.string().uuid('ID de mensajero inválido'),
+  });
+
+  const {
+    watch,
+    setValue,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<AssignFormInput>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      courier_id: order.assigned_courier_id || "",
+    },
+  });
+
+  const courierId = watch("courier_id");
+  const hasChanged = courierId !== (order.assigned_courier_id || "");
+
+  const onSubmit = async (data: AssignFormInput) => {
+    if (!data.courier_id && !isAssigned) {
       setError("Selecciona un mensajero");
       return;
     }
@@ -40,20 +65,20 @@ export function AssignOrderModal({
 
     try {
       // Si se quiere desasignar
-      if (!courierId && isAssigned) {
+      if (!data.courier_id && isAssigned) {
         const response = await fetch(`/api/orders/${order.id}/assign`, {
           method: "DELETE",
         });
 
         if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error);
+          const responseData = await response.json();
+          throw new Error(responseData.error);
         }
       }
       // Si se quiere asignar/reasignar
-      else if (courierId) {
+      else if (data.courier_id) {
         // Si ya está asignado, primero desasignar
-        if (isAssigned && order.assigned_courier_id !== courierId) {
+        if (isAssigned && order.assigned_courier_id !== data.courier_id) {
           await fetch(`/api/orders/${order.id}/assign`, { method: "DELETE" });
         }
 
@@ -62,12 +87,12 @@ export function AssignOrderModal({
           const response = await fetch(`/api/orders/${order.id}/assign`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ courier_id: courierId }),
+            body: JSON.stringify({ courier_id: data.courier_id }),
           });
 
           if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error);
+            const responseData = await response.json();
+            throw new Error(responseData.error);
           }
         }
       }
@@ -82,7 +107,7 @@ export function AssignOrderModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50">
+    <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
@@ -111,15 +136,20 @@ export function AssignOrderModal({
           {/* Selector de mensajero */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Mensajero
+              Mensajero {!isAssigned && <span className="text-red-500">*</span>}
             </label>
             <CourierSelect
               businessId={businessId}
-              value={courierId}
-              onChange={setCourierId}
+              value={courierId || null}
+              onChange={(value) => setValue("courier_id", value || "")}
               showUnassignOption={isAssigned}
               placeholder="Seleccionar mensajero..."
             />
+            {errors.courier_id && (
+              <p className="mt-1 text-sm text-red-500">
+                {errors.courier_id.message}
+              </p>
+            )}
           </div>
 
           {/* Error */}
@@ -135,7 +165,7 @@ export function AssignOrderModal({
           <Button variant="ghost" onClick={onClose} disabled={loading}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={loading || !hasChanged}>
+          <Button onClick={handleSubmit(onSubmit)} disabled={loading || !hasChanged}>
             {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {isAssigned && !courierId ? "Desasignar" : "Asignar"}
           </Button>

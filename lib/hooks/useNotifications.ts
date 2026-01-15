@@ -178,16 +178,21 @@ export function useNotifications(): UseNotificationsReturn {
           },
           (payload: RealtimePostgresChangesPayload<Notification>) => {
             if (!mounted) return;
-            console.log("New notification received via realtime:", payload.new);
+            if (!payload.new) return;
+            const newNotification = payload.new as Notification;
+            console.log(
+              "New notification received via realtime:",
+              newNotification
+            );
             setNotifications((prev) => {
               // Evitar duplicados
-              const exists = prev.find((n) => n.id === payload.new.id);
+              const exists = prev.find((n) => n.id === newNotification.id);
               if (exists) {
                 console.log("Notification already exists, skipping duplicate");
                 return prev;
               }
               // Agregar al inicio de la lista
-              return [payload.new, ...prev];
+              return [newNotification, ...prev];
             });
           }
         )
@@ -201,10 +206,17 @@ export function useNotifications(): UseNotificationsReturn {
           },
           (payload: RealtimePostgresChangesPayload<Notification>) => {
             if (!mounted) return;
-            console.log("Notification updated via realtime:", payload.new);
+            if (!payload.new) return;
+            const updatedNotification = payload.new as Notification;
+            console.log(
+              "Notification updated via realtime:",
+              updatedNotification
+            );
             setNotifications((prev) =>
               prev.map((notif) =>
-                notif.id === payload.new.id ? payload.new : notif
+                notif.id === updatedNotification.id
+                  ? updatedNotification
+                  : notif
               )
             );
           }
@@ -244,7 +256,7 @@ export function useNotifications(): UseNotificationsReturn {
       }
       userIdRef.current = null;
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, [fetchNotifications]); // fetchNotifications is memoized with useCallback
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 

@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/Button";
 import { Divider } from "@/components/ui/Divider";
 import { FormInput } from "@/components/ui/FormInput";
 import { login } from "@/lib/auth/client-actions";
+import { loginSchema } from "@/lib/validations/auth";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
@@ -14,11 +17,26 @@ export default function LoginPage() {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(login, null);
 
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(loginSchema),
+  });
+
   useEffect(() => {
     if (state?.success && state?.redirectTo) {
       router.push(state.redirectTo);
     }
   }, [state, router]);
+
+  const onSubmit = (data: { email: string; password: string }) => {
+    const formData = new FormData();
+    formData.append("email", data.email);
+    formData.append("password", data.password);
+    formAction(formData);
+  };
 
   return (
     <AuthCard
@@ -32,29 +50,30 @@ export default function LoginPage() {
         <Alert variant="success">{state.message}</Alert>
       )}
 
-      <form action={formAction} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <FormInput
           id="email"
-          name="email"
           type="email"
           label="Email"
           placeholder="tu@email.com"
           required
           autoComplete="email"
-          error={state && !state.success ? state.fieldErrors?.email : undefined}
+          error={errors.email?.message || (state && !state.success ? state.fieldErrors?.email : undefined)}
+          {...register("email")}
         />
 
         <FormInput
           id="password"
-          name="password"
           type="password"
           label="Contraseña"
           placeholder="••••••••"
           required
           autoComplete="current-password"
           error={
-            state && !state.success ? state.fieldErrors?.password : undefined
+            errors.password?.message ||
+            (state && !state.success ? state.fieldErrors?.password : undefined)
           }
+          {...register("password")}
         />
 
         <div className="flex items-center justify-between text-sm">

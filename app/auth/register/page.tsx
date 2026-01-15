@@ -5,6 +5,9 @@ import { AuthCard } from "@/components/ui/AuthCard";
 import { Button } from "@/components/ui/Button";
 import { FormInput } from "@/components/ui/FormInput";
 import { register } from "@/lib/auth/client-actions";
+import { registerSchema } from "@/lib/validations/auth";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
@@ -13,11 +16,33 @@ export default function RegisterPage() {
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(register, null);
 
+  const {
+    register: registerField,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(registerSchema),
+  });
+
   useEffect(() => {
     if (state?.success && state?.redirectTo) {
       router.push(state.redirectTo);
     }
   }, [state, router]);
+
+  const onSubmit = (data: {
+    fullName: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+  }) => {
+    const formData = new FormData();
+    formData.append("fullName", data.fullName);
+    formData.append("email", data.email);
+    formData.append("password", data.password);
+    formData.append("confirmPassword", data.confirmPassword);
+    formAction(formData);
+  };
 
   return (
     <AuthCard
@@ -31,34 +56,37 @@ export default function RegisterPage() {
         <Alert variant="success">{state.message}</Alert>
       )}
 
-      <form action={formAction} className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <FormInput
           id="fullName"
-          name="fullName"
           type="text"
           label="Nombre Completo"
           placeholder="Juan Pérez"
           required
           autoComplete="name"
           error={
-            state && !state.success ? state.fieldErrors?.fullName : undefined
+            errors.fullName?.message ||
+            (state && !state.success ? state.fieldErrors?.fullName : undefined)
           }
+          {...registerField("fullName")}
         />
 
         <FormInput
           id="email"
-          name="email"
           type="email"
           label="Email"
           placeholder="tu@email.com"
           required
           autoComplete="email"
-          error={state && !state.success ? state.fieldErrors?.email : undefined}
+          error={
+            errors.email?.message ||
+            (state && !state.success ? state.fieldErrors?.email : undefined)
+          }
+          {...registerField("email")}
         />
 
         <FormInput
           id="password"
-          name="password"
           type="password"
           label="Contraseña"
           placeholder="••••••••"
@@ -66,23 +94,26 @@ export default function RegisterPage() {
           autoComplete="new-password"
           hint="Mínimo 8 caracteres, una mayúscula, una minúscula y un número"
           error={
-            state && !state.success ? state.fieldErrors?.password : undefined
+            errors.password?.message ||
+            (state && !state.success ? state.fieldErrors?.password : undefined)
           }
+          {...registerField("password")}
         />
 
         <FormInput
           id="confirmPassword"
-          name="confirmPassword"
           type="password"
           label="Confirmar Contraseña"
           placeholder="••••••••"
           required
           autoComplete="new-password"
           error={
-            state && !state.success
+            errors.confirmPassword?.message ||
+            (state && !state.success
               ? state.fieldErrors?.confirmPassword
-              : undefined
+              : undefined)
           }
+          {...registerField("confirmPassword")}
         />
 
         <div className="flex items-start">
