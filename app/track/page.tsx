@@ -2,24 +2,41 @@ import type { Metadata } from "next";
 import { TrackingPageClient } from "./TrackingPageClient";
 
 type Props = {
-  params: Promise<{ token: string }>;
+  searchParams: Promise<{ token?: string }>;
 };
 
 type MetadataProps = {
-  params: Promise<{ token: string }>;
+  searchParams: Promise<{ token?: string }>;
 };
 
 export default async function TrackingPage(props: Props) {
-  const params = await props.params;
-  return <TrackingPageClient token={params.token} />;
+  const searchParams = await props.searchParams;
+  const token = searchParams.token;
+
+  if (!token) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">
+            Token Requerido
+          </h1>
+          <p className="text-gray-600 mb-4">
+            Por favor, proporciona un token de seguimiento válido en la URL.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <TrackingPageClient token={token} />;
 }
 
 // Metadata con OpenGraph completo para compartir en WhatsApp
 export async function generateMetadata(
   props: MetadataProps
 ): Promise<Metadata> {
-  const params = await props.params;
-  const token = params.token;
+  const searchParams = await props.searchParams;
+  const token = searchParams.token;
 
   // Obtener la URL base del sitio
   const siteUrl =
@@ -35,7 +52,9 @@ export async function generateMetadata(
   baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 
   const ogImageUrl = `${baseUrl}/opengraph.jpg`;
-  const trackingUrl = `${baseUrl}/track/${token}`;
+  const trackingUrl = token
+    ? `${baseUrl}/track?token=${encodeURIComponent(token)}`
+    : `${baseUrl}/track`;
 
   return {
     title: "Seguimiento de Pedido en Tiempo Real | Follow It",

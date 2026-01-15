@@ -119,7 +119,9 @@ export async function POST(request: NextRequest) {
 
     // Construir URL completa
     const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-    const trackingUrl = `${baseUrl}/track/${parsed.token}`;
+    const trackingUrl = `${baseUrl}/track?token=${encodeURIComponent(
+      parsed.token
+    )}`;
 
     return NextResponse.json({
       tracking_url: trackingUrl,

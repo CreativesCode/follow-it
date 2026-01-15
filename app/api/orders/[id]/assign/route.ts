@@ -246,9 +246,9 @@ export async function POST(
           .maybeSingle();
 
         const trackingUrl = trackingLink
-          ? `${process.env.NEXT_PUBLIC_APP_URL || ""}/track/${
-              trackingLink.token
-            }`
+          ? `${
+              process.env.NEXT_PUBLIC_APP_URL || ""
+            }/track?token=${encodeURIComponent(trackingLink.token)}`
           : undefined;
 
         const { formatAssignmentMessage } = await import(
