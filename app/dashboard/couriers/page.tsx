@@ -2,8 +2,7 @@
 
 // Esta página se convierte en Client Component para compatibilidad con exportación estática
 // En Capacitor, la autenticación se maneja del lado del cliente
-import { useUser } from "@/lib/hooks/useUser";
-import { useUserRole } from "@/lib/hooks/useUserRole";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -11,8 +10,7 @@ import CouriersPageClient from "./CouriersPageClient";
 
 export default function CouriersPage() {
   const router = useRouter();
-  const { user, loading: userLoading } = useUser();
-  const { type: roleType, loading: roleLoading } = useUserRole();
+  const { user, userLoading, roleType, roleLoading } = useAuth();
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState<string>("");
   const [couriers, setCouriers] = useState<any[]>([]);

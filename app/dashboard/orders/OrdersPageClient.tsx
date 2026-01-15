@@ -181,7 +181,7 @@ export function OrdersPageClient({ businessId }: Props) {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm safe-area-inset">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-4 md:p-6">
+            <div className="p-4 md:p-6 pb-6 md:pb-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg md:text-xl font-semibold">
                   Crear Nuevo Pedido

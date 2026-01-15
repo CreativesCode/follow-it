@@ -260,7 +260,7 @@ export function OrderDetailModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 pb-8">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
@@ -273,7 +273,7 @@ export function OrderDetailModal({
               <Alert variant="error">{error || "Pedido no encontrado"}</Alert>
             </div>
           ) : isEditing ? (
-            <div className="space-y-4">
+            <div className="space-y-4 pb-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Editar Pedido
               </h3>

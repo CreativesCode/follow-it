@@ -3,15 +3,14 @@
 import { Alert } from "@/components/ui/Alert";
 import { AuthCard } from "@/components/ui/AuthCard";
 import { Button } from "@/components/ui/Button";
-import { Divider } from "@/components/ui/Divider";
 import { FormInput } from "@/components/ui/FormInput";
 import { login } from "@/lib/auth/client-actions";
 import { loginSchema } from "@/lib/validations/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect } from "react";
+import { startTransition, useActionState, useEffect } from "react";
+import { useForm } from "react-hook-form";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,7 +34,9 @@ export default function LoginPage() {
     const formData = new FormData();
     formData.append("email", data.email);
     formData.append("password", data.password);
-    formAction(formData);
+    startTransition(() => {
+      formAction(formData);
+    });
   };
 
   return (
@@ -58,7 +59,10 @@ export default function LoginPage() {
           placeholder="tu@email.com"
           required
           autoComplete="email"
-          error={errors.email?.message || (state && !state.success ? state.fieldErrors?.email : undefined)}
+          error={
+            errors.email?.message ||
+            (state && !state.success ? state.fieldErrors?.email : undefined)
+          }
           {...register("email")}
         />
 
@@ -98,9 +102,9 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <Divider text="O continúa con" />
+      {/* <Divider text="O continúa con" /> */}
 
-      <div className="grid grid-cols-2 gap-3">
+      {/* <div className="grid grid-cols-2 gap-3">
         <Button
           type="button"
           variant="outline"
@@ -149,7 +153,7 @@ export default function LoginPage() {
           </svg>
           GitHub
         </Button>
-      </div>
+      </div> */}
 
       <p className="text-center text-sm text-gray-600">
         ¿No tienes una cuenta?{" "}

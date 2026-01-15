@@ -3,18 +3,16 @@
 import { CourierTrackingIndicator } from "@/components/couriers/CourierTrackingIndicator";
 import { OrderCard } from "@/components/orders/OrderCard";
 import { OrderDetailModal } from "@/components/orders/OrderDetailModal";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { useLocationTracking } from "@/lib/hooks/useLocationTracking";
 import { useOrders } from "@/lib/hooks/useOrders";
-import { useUser } from "@/lib/hooks/useUser";
-import { useUserRole } from "@/lib/hooks/useUserRole";
 import { Package } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading: userLoading } = useUser();
-  const { type: roleType, loading: roleLoading, courier } = useUserRole();
+  const { user, userLoading, roleType, roleLoading, courier } = useAuth();
 
   // Para mensajeros: obtener pedidos y tracking
   const { orders, loading: ordersLoading } = useOrders({
