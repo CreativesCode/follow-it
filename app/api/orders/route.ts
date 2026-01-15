@@ -1,5 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { requireBusinessRole } from "@/lib/utils/auth";
+import {
+  getUserRole,
+  requireAuth,
+  requireBusinessRole,
+} from "@/lib/utils/auth";
 import { createOrderSchema, orderFiltersSchema } from "@/lib/validations/order";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
@@ -29,11 +33,16 @@ async function generateOrderCode(
   return `#${prefix}-${sequence}`;
 }
 
-// GET /api/orders - Listar pedidos del negocio
+// GET /api/orders - Listar pedidos (business members ven todos, couriers solo asignados)
 export async function GET(request: NextRequest) {
   try {
-    const { businessMember } = await requireBusinessRole();
+    const user = await requireAuth();
+    const role = await getUserRole(user.id);
     const supabase = await createClient();
+
+    if (!role.type) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
 
     // Parse query params
     const { searchParams } = new URL(request.url);
@@ -49,19 +58,24 @@ export async function GET(request: NextRequest) {
         : 20,
     });
 
-    // Query base
-    let query = supabase
-      .from("orders")
-      .select(
-        `
+    // Query base - RLS manejará los permisos
+    let query = supabase.from("orders").select(
+      `
         *,
         courier:couriers!assigned_courier_id(id, display_name, phone),
         customer:customers(id, name, phone)
       `,
-        { count: "exact" }
-      )
-      .eq("business_id", businessMember.business_id)
-      .order("updated_at", { ascending: false });
+      { count: "exact" }
+    );
+
+    // Si es business member, filtrar por business_id
+    if (role.type === "business") {
+      const businessMember = role.data as { business_id: string };
+      query = query.eq("business_id", businessMember.business_id);
+    }
+    // Si es courier, RLS automáticamente filtra por assigned_courier_id
+
+    query = query.order("updated_at", { ascending: false });
 
     // Aplicar filtros
     if (filters.status && filters.status !== "all") {

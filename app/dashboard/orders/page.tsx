@@ -1,14 +1,29 @@
-import { requireBusinessRole } from "@/lib/utils/auth";
+import { getUserRole, requireAuth } from "@/lib/utils/auth";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { OrdersPageClient } from "./OrdersPageClient";
 
 export default async function OrdersPage() {
-  // Validar rol server-side
-  const { businessMember } = await requireBusinessRole();
+  // Validar autenticación y obtener rol
+  const user = await requireAuth();
+  const role = await getUserRole(user.id);
+
+  if (!role.type) {
+    redirect("/auth/onboarding");
+  }
+
+  // Obtener business_id según el rol
+  let businessId: string;
+  if (role.type === "business") {
+    businessId = (role.data as { business_id: string }).business_id;
+  } else {
+    // Si es courier, también tiene business_id
+    businessId = (role.data as { business_id: string }).business_id;
+  }
 
   return (
     <Suspense fallback={<OrdersPageSkeleton />}>
-      <OrdersPageClient businessId={businessMember.business_id} />
+      <OrdersPageClient businessId={businessId} />
     </Suspense>
   );
 }

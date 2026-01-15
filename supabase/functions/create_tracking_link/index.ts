@@ -1,13 +1,13 @@
 // supabase/functions/create_tracking_link/index.ts
-import { supabaseAdmin, supabaseUser } from "../_shared/supabase.ts";
+import { sha256Hex } from "../_shared/crypto.ts";
 import {
-  ok,
   badRequest,
-  unauthorized,
   forbidden,
   json,
+  ok,
+  unauthorized,
 } from "../_shared/http.ts";
-import { sha256Hex } from "../_shared/crypto.ts";
+import { supabaseAdmin, supabaseUser } from "../_shared/supabase.ts";
 
 type Payload = {
   order_id: string;
@@ -17,18 +17,64 @@ type Payload = {
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
 
-  const supaUser = supabaseUser(req);
-  const { data: authData, error: authErr } = await supaUser.auth.getUser();
-  if (authErr || !authData.user) return unauthorized();
-
-  let payload: Payload;
+  // Parse payload
+  let payload: Payload & { _user_id?: string };
   try {
     payload = await req.json();
   } catch {
     return badRequest("Invalid JSON body");
   }
 
-  const { order_id, expires_in_minutes = 1440 } = payload ?? ({} as Payload); // default 24h
+  // Determinar el flujo de autenticación:
+  // 1. Si viene _user_id en el body y x-internal-secret coincide -> flujo desde Route Handler
+  // 2. Si viene Authorization con JWT de usuario -> flujo directo (original)
+  const authHeader = req.headers.get("Authorization") || "";
+  const internalSecret = req.headers.get("x-internal-secret") || "";
+
+  // Secret compartido entre Next.js y Edge Functions
+  // Configurar en Supabase: supabase secrets set INTERNAL_API_SECRET=<tu-secret>
+  // Y en .env.local de Next.js: INTERNAL_API_SECRET=<tu-secret>
+  const expectedSecret = Deno.env.get("INTERNAL_API_SECRET") || "";
+
+  // Verificar si es una llamada interna desde el Route Handler
+  const isInternalCall =
+    internalSecret.length > 0 &&
+    expectedSecret.length > 0 &&
+    internalSecret === expectedSecret;
+
+  console.log("[DEBUG] Auth check:", {
+    hasAuthHeader: !!authHeader,
+    hasInternalSecret: internalSecret.length > 0,
+    hasExpectedSecret: expectedSecret.length > 0,
+    secretsMatch: isInternalCall,
+    hasUserId: !!payload._user_id,
+    userId: payload._user_id,
+  });
+
+  let userId: string;
+
+  if (isInternalCall && payload._user_id) {
+    // Flujo desde Route Handler: ya validó al usuario con x-internal-secret
+    console.log("[DEBUG] Usando flujo interno con _user_id");
+    userId = payload._user_id;
+  } else {
+    // Flujo original: validar JWT del usuario
+    console.log("[DEBUG] Usando flujo JWT de usuario");
+    const supaUser = supabaseUser(req);
+    const { data: authData, error: authErr } = await supaUser.auth.getUser();
+    console.log("[DEBUG] getUser result:", {
+      hasUser: !!authData?.user,
+      userId: authData?.user?.id,
+      error: authErr?.message,
+    });
+    if (authErr || !authData.user) return unauthorized();
+    userId = authData.user.id;
+  }
+
+  // Extract payload fields (excluding _user_id)
+  const { _user_id, ...payloadClean } = payload;
+  const { order_id, expires_in_minutes = 1440 } =
+    payloadClean ?? ({} as Payload); // default 24h
   if (!order_id || typeof order_id !== "string")
     return badRequest("order_id is required");
 
@@ -44,7 +90,6 @@ Deno.serve(async (req) => {
   if (orderErr || !order) return badRequest("Order not found");
 
   // Verify user is business member
-  const userId = authData.user.id;
   const { data: membership } = await admin
     .from("business_members")
     .select("role,is_active")
@@ -88,6 +133,11 @@ Deno.serve(async (req) => {
     tracking_link_id: link.id,
     token, // Only returned once!
     expires_at: expires_at.toISOString(),
-    tracking_url: `${Deno.env.get("SUPABASE_URL")?.replace("/rest/v1", "")}/functions/v1/get_tracking_snapshot?token=${token}`,
+    tracking_url: `${Deno.env
+      .get("SUPABASE_URL")
+      ?.replace(
+        "/rest/v1",
+        ""
+      )}/functions/v1/get_tracking_snapshot?token=${token}`,
   });
 });

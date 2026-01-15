@@ -1,7 +1,7 @@
 // supabase/functions/get_tracking_snapshot/index.ts
-import { supabaseAdmin } from "../_shared/supabase.ts";
-import { ok, badRequest, forbidden, json } from "../_shared/http.ts";
 import { sha256Hex } from "../_shared/crypto.ts";
+import { corsHeaders, corsOk, corsOptions, json } from "../_shared/http.ts";
+import { supabaseAdmin } from "../_shared/supabase.ts";
 
 type Snapshot = {
   order: {
@@ -20,12 +20,18 @@ type Snapshot = {
 };
 
 Deno.serve(async (req) => {
-  if (req.method !== "GET") return json(405, { error: "Method not allowed" });
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return corsOptions();
+  }
+
+  if (req.method !== "GET")
+    return json(405, { error: "Method not allowed" }, corsHeaders);
 
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
   if (!token || token.trim().length < 16)
-    return badRequest("token is required");
+    return json(400, { error: "token is required" }, corsHeaders);
 
   const admin = supabaseAdmin();
   const token_hash = await sha256Hex(token.trim());
@@ -36,10 +42,11 @@ Deno.serve(async (req) => {
     .eq("token_hash", token_hash)
     .maybeSingle();
 
-  if (linkErr || !link) return forbidden("Invalid token");
-  if (link.is_revoked) return forbidden("Link revoked");
+  if (linkErr || !link)
+    return json(403, { error: "Invalid token" }, corsHeaders);
+  if (link.is_revoked) return json(403, { error: "Link revoked" }, corsHeaders);
   if (new Date(link.expires_at).getTime() < Date.now())
-    return forbidden("Link expired");
+    return json(403, { error: "Link expired" }, corsHeaders);
 
   // Load order
   const { data: order, error: orderErr } = await admin
@@ -49,7 +56,8 @@ Deno.serve(async (req) => {
     .eq("business_id", link.business_id)
     .single();
 
-  if (orderErr || !order) return forbidden("Order not found");
+  if (orderErr || !order)
+    return json(403, { error: "Order not found" }, corsHeaders);
 
   let courierLoc: Snapshot["courier"] = null;
 
@@ -84,5 +92,5 @@ Deno.serve(async (req) => {
     courier: courierLoc,
   };
 
-  return ok(snapshot);
+  return corsOk(snapshot);
 });

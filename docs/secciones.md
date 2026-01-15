@@ -2599,8 +2599,8 @@ export async function POST(request: NextRequest) {
       .from("orders")
       .select(
         `
-        id, 
-        business_id, 
+        id,
+        business_id,
         status,
         assigned_courier_id,
         courier:couriers!assigned_courier_id(id, user_id)
@@ -5473,19 +5473,20 @@ supabase/functions/
    - [x] Modal de detalles y edición
    - [x] Optimización móvil (responsive, touch-friendly)
 
-2. **Fase 2: Asignación (3-5 días)**
+2. **Fase 2: Asignación (3-5 días)** ✅ COMPLETADO
 
-   - [ ] CourierSelect component
-   - [ ] AssignOrderModal
-   - [ ] API Route asignar/desasignar
-   - [ ] Integración con lista de pedidos
+   - [x] CourierSelect component
+   - [x] AssignOrderModal
+   - [x] API Route asignar/desasignar
+   - [x] Integración con lista de pedidos
+   - [x] Hook useCouriers
 
 3. **Fase 3: Transiciones (3-5 días)**
 
-   - [ ] OrderActions component (mensajero)
-   - [ ] API Route cambiar estado
-   - [ ] Página detalle de pedido
-   - [ ] Timeline de eventos
+   - [x] OrderActions component (mensajero)
+   - [x] API Route cambiar estado
+   - [x] Integración en OrderDetailModal para mensajeros
+   - [x] Timeline de eventos
 
 4. **Fase 4: Proofs (1 semana)**
 
@@ -5503,9 +5504,11 @@ supabase/functions/
 
 6. **Fase 6: Tracking Público (3-5 días)**
 
-   - [ ] Página /track/[token]
-   - [ ] API Route crear link
-   - [ ] UI de tracking cliente
+   - [x] Página /track/[token]
+   - [x] API Route crear link
+   - [x] UI de tracking cliente
+   - [x] Timeline de eventos en tracking público
+   - [x] Estados completados coloreados en timeline visual
 
 7. **Fase 7: Offline y Polish (1 semana)**
    - [ ] Hook useOfflineQueue

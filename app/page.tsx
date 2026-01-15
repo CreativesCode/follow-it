@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100">
+    <div className="min-h-screen bg-linear-to-br from-primary-50 via-white to-primary-100">
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -45,7 +45,11 @@ export default function Home() {
                   </Button>
                 </Link>
                 <Link href="/auth/login">
-                  <Button variant="outline" size="lg" className="text-lg px-8 py-4">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="text-lg px-8 py-4"
+                  >
                     Ver Demo
                   </Button>
                 </Link>
@@ -104,8 +108,8 @@ export default function Home() {
                     Comprobantes Digitales
                   </h3>
                   <p className="text-gray-600">
-                    Captura fotos y firmas como prueba de entrega con geolocalización
-                    y timestamp automático
+                    Captura fotos y firmas como prueba de entrega con
+                    geolocalización y timestamp automático
                   </p>
                 </div>
 
@@ -129,8 +133,8 @@ export default function Home() {
                     Gestión de Equipos
                   </h3>
                   <p className="text-gray-600">
-                    Asigna pedidos, gestiona mensajeros y optimiza rutas desde un
-                    panel de control intuitivo
+                    Asigna pedidos, gestiona mensajeros y optimiza rutas desde
+                    un panel de control intuitivo
                   </p>
                 </div>
               </div>

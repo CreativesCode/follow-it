@@ -54,7 +54,11 @@ export function DesktopSidebar() {
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-white border-r border-gray-200 flex flex-col z-40">
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-primary-600">Follow It</h1>
+        <img
+          src="/logo_horizontal.svg"
+          alt="Follow It"
+          className="h-8 w-auto"
+        />
         <span className="ml-3 px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded">
           {isBusiness ? "Negocio" : "Mensajero"}
         </span>

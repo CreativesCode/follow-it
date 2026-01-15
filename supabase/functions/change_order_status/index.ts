@@ -1,12 +1,12 @@
 // supabase/functions/change_order_status/index.ts
-import { supabaseAdmin, supabaseUser } from "../_shared/supabase.ts";
 import {
-  ok,
   badRequest,
-  unauthorized,
   forbidden,
   json,
+  ok,
+  unauthorized,
 } from "../_shared/http.ts";
+import { supabaseAdmin, supabaseUser } from "../_shared/supabase.ts";
 
 type OrderStatus =
   | "pending"
@@ -20,8 +20,9 @@ type Payload = {
   order_id: string;
   to_status: OrderStatus;
   note?: string | null;
-  // if you want to tie proof to the status change:
   proof_id?: string | null;
+  // Cuando se invoca desde Route Handler con service_role:
+  _user_id?: string;
 };
 
 function isValidStatus(s: string): s is OrderStatus {
@@ -66,10 +67,7 @@ function isPanelOnlyTransition(from: OrderStatus, to: OrderStatus): boolean {
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
 
-  const supaUser = supabaseUser(req);
-  const { data: authData, error: authErr } = await supaUser.auth.getUser();
-  if (authErr || !authData.user) return unauthorized();
-
+  // Parse payload first
   let payload: Payload;
   try {
     payload = await req.json();
@@ -77,7 +75,53 @@ Deno.serve(async (req) => {
     return badRequest("Invalid JSON body");
   }
 
-  const { order_id, to_status, note, proof_id } = payload ?? ({} as Payload);
+  // Determinar el flujo de autenticación:
+  // 1. Si viene _user_id en el body y x-internal-secret coincide -> flujo desde Route Handler
+  // 2. Si viene Authorization con JWT de usuario -> flujo directo (original)
+  const authHeader = req.headers.get("Authorization") || "";
+  const internalSecret = req.headers.get("x-internal-secret") || "";
+
+  // Secret compartido entre Next.js y Edge Functions
+  // Configurar en Supabase: supabase secrets set INTERNAL_API_SECRET=<tu-secret>
+  // Y en .env.local de Next.js: INTERNAL_API_SECRET=<tu-secret>
+  const expectedSecret = Deno.env.get("INTERNAL_API_SECRET") || "";
+
+  // Verificar si es una llamada interna desde el Route Handler
+  const isInternalCall =
+    internalSecret.length > 0 &&
+    expectedSecret.length > 0 &&
+    internalSecret === expectedSecret;
+
+  console.log("[DEBUG] Auth check:", {
+    hasAuthHeader: !!authHeader,
+    hasInternalSecret: internalSecret.length > 0,
+    hasExpectedSecret: expectedSecret.length > 0,
+    secretsMatch: isInternalCall,
+    hasUserId: !!payload._user_id,
+    userId: payload._user_id,
+  });
+
+  let userId: string;
+
+  if (isInternalCall && payload._user_id) {
+    // Flujo desde Route Handler: ya validó al usuario con x-internal-secret
+    console.log("[DEBUG] Usando flujo interno con _user_id");
+    userId = payload._user_id;
+  } else {
+    // Flujo original: validar JWT del usuario
+    console.log("[DEBUG] Usando flujo JWT de usuario");
+    const supaUser = supabaseUser(req);
+    const { data: authData, error: authErr } = await supaUser.auth.getUser();
+    console.log("[DEBUG] getUser result:", {
+      hasUser: !!authData?.user,
+      userId: authData?.user?.id,
+      error: authErr?.message,
+    });
+    if (authErr || !authData.user) return unauthorized();
+    userId = authData.user.id;
+  }
+
+  const { order_id, to_status, note, proof_id } = payload;
   if (!order_id || typeof order_id !== "string")
     return badRequest("order_id is required");
   if (!to_status || typeof to_status !== "string" || !isValidStatus(to_status))
@@ -100,8 +144,6 @@ Deno.serve(async (req) => {
   }
 
   // Determine if user is business member (panel) and/or courier (app)
-  const userId = authData.user.id;
-
   const [{ data: membership }, { data: courier }] = await Promise.all([
     admin
       .from("business_members")
