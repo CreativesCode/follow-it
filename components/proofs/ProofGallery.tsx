@@ -180,9 +180,9 @@ function ProofViewer({
   }, [proof]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 flex flex-col safe-area-inset">
+    <div className="fixed inset-0 z-50 bg-black/90 flex flex-col safe-area-inset modal-container">
       {/* Header */}
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between p-4 safe-area-top">
         <div className="text-white">
           <p className="font-medium">
             {proof.type === "photo" ? "Foto" : "Firma"}
@@ -217,7 +217,7 @@ function ProofViewer({
 
       {/* Footer con ubicación */}
       {proof.lat && proof.lng && (
-        <div className="p-4 bg-black/50">
+        <div className="p-4 bg-black/50 safe-area-bottom">
           <div className="flex items-center gap-2 text-white text-sm">
             <MapPin className="w-4 h-4" />
             <span>

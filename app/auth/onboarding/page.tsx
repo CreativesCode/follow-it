@@ -108,7 +108,7 @@ function CourierInvitationStep({ onBack }: { onBack: () => void; user: any }) {
 
           <Button
             onClick={validateCode}
-            className="w-full"
+            className="w-full safe-area-bottom"
             isLoading={isValidating}
             disabled={isValidating || !invitationCode.trim()}
           >
@@ -158,7 +158,7 @@ function CourierInvitationStep({ onBack }: { onBack: () => void; user: any }) {
 
           <Button
             onClick={acceptInvitation}
-            className="w-full"
+            className="w-full safe-area-bottom"
             isLoading={isAccepting}
             disabled={isAccepting}
           >
@@ -435,7 +435,7 @@ export default function OnboardingPage() {
 
           <Button
             type="submit"
-            className="w-full"
+            className="w-full safe-area-bottom"
             isLoading={isLoading}
             disabled={isSubmitting}
           >

@@ -97,7 +97,7 @@ export default function LoginPage() {
           </Link>
         </div>
 
-        <Button type="submit" className="w-full" isLoading={isPending}>
+        <Button type="submit" className="w-full safe-area-bottom" isLoading={isPending}>
           Iniciar Sesión
         </Button>
       </form>

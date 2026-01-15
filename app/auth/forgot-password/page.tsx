@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
           {...register("email")}
         />
 
-        <Button type="submit" className="w-full" isLoading={isPending}>
+        <Button type="submit" className="w-full safe-area-bottom" isLoading={isPending}>
           Enviar Enlace de Recuperación
         </Button>
       </form>

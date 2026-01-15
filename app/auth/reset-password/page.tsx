@@ -80,7 +80,7 @@ export default function ResetPasswordPage() {
           {...register("confirmPassword")}
         />
 
-        <Button type="submit" className="w-full" isLoading={isPending}>
+        <Button type="submit" className="w-full safe-area-bottom" isLoading={isPending}>
           Actualizar Contraseña
         </Button>
       </form>

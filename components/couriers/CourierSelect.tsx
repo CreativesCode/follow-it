@@ -95,7 +95,7 @@ export function CourierSelect({
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-10"
+            className="fixed inset-0 z-10 safe-area-inset"
             onClick={() => setIsOpen(false)}
           />
 

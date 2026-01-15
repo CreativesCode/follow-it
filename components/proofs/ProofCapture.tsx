@@ -183,9 +183,9 @@ export function ProofCapture({ orderId, onSuccess, onCancel }: Props) {
   }, [orderId, startCamera, getLocation, stopCamera, onCancel]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col safe-area-inset">
+    <div className="fixed inset-0 z-50 bg-black flex flex-col safe-area-inset modal-container">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-black/50">
+      <div className="flex items-center justify-between p-4 bg-black/50 safe-area-top">
         <button onClick={handleCancel} className="text-white p-2">
           <X className="w-6 h-6" />
         </button>
@@ -247,7 +247,7 @@ export function ProofCapture({ orderId, onSuccess, onCancel }: Props) {
       </div>
 
       {/* Controls */}
-      <div className="p-6 bg-black/50">
+      <div className="p-6 bg-black/50 safe-area-bottom">
         {mode === "camera" ? (
           <div className="flex justify-center">
             <button

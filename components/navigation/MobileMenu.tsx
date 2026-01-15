@@ -66,7 +66,7 @@ export function MobileMenu({ isOpen, onClose }: Props) {
       {/* Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-50 lg:hidden safe-area-inset"
           onClick={onClose}
         />
       )}
@@ -76,12 +76,12 @@ export function MobileMenu({ isOpen, onClose }: Props) {
         className={`
           fixed left-0 top-0 bottom-0 w-64 bg-white border-r border-gray-200 
           flex flex-col z-50 transform transition-transform duration-300 ease-in-out
-          lg:hidden
+          lg:hidden safe-area-left
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
         {/* Header */}
-        <div className="h-14 flex items-center justify-between px-4 border-b border-gray-200">
+        <div className="h-14 flex items-center justify-between px-4 border-b border-gray-200 safe-area-top">
           <div className="flex items-center gap-3">
             <img src="/logo_horizontal.svg" alt="Follow It" className="h-8" />
             <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-700 rounded">
@@ -129,7 +129,7 @@ export function MobileMenu({ isOpen, onClose }: Props) {
         </nav>
 
         {/* User Info & Logout */}
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-gray-200 p-4 safe-area-bottom">
           <div className="mb-3 px-4">
             <p className="text-sm font-medium text-gray-900">
               {user?.user_metadata?.full_name || user?.email}
