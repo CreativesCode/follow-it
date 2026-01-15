@@ -36,7 +36,7 @@ export function OrdersPageClient({ businessId }: Props) {
     setFilters,
     createOrder,
     refetch,
-  } = useOrders();
+  } = useOrders({ businessId });
 
   // Procesar orderId de la URL una sola vez
   useEffect(() => {

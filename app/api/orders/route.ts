@@ -262,16 +262,26 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     console.error("POST /api/orders error:", error);
 
+    // Manejar errores de validación de Zod
     if (
       error &&
       typeof error === "object" &&
       "name" in error &&
       error.name === "ZodError"
     ) {
+      const zodError = error as {
+        issues?: Array<{ path: (string | number)[]; message: string }>;
+      };
+      const details =
+        zodError.issues?.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })) || [];
+
       return NextResponse.json(
         {
           error: "Datos inválidos",
-          details: "errors" in error ? error.errors : [],
+          details,
         },
         { status: 400 }
       );
