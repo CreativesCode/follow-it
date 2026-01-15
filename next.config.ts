@@ -23,6 +23,53 @@ const nextConfig: NextConfig = {
   generateBuildId: async () => {
     return "build-" + Date.now();
   },
+
+  // Headers HTTP para mejorar SEO y Open Graph en Vercel
+  async headers() {
+    return [
+      {
+        // Aplicar headers específicos a la imagen Open Graph
+        source: "/opengraph.jpg",
+        headers: [
+          {
+            key: "Cache-Control",
+            // Cachear agresivamente ya que la imagen Open Graph rara vez cambia
+            value: "public, max-age=31536000, immutable",
+          },
+          {
+            key: "Content-Type",
+            value: "image/jpeg",
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+        ],
+      },
+      {
+        // Headers de seguridad para todas las páginas
+        source: "/(.*)",
+        headers: [
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "X-XSS-Protection",
+            value: "1; mode=block",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
