@@ -7,12 +7,16 @@ export default function DebugOGPage() {
     Array<{ name: string; content: string }>
   >([]);
   const [currentUrl, setCurrentUrl] = useState("");
+  const [origin, setOrigin] = useState("");
 
   useEffect(() => {
     // Usar requestAnimationFrame para evitar renders en cascada
     const fetchMetadata = () => {
+      if (typeof window === "undefined") return;
+
       // Obtener la URL actual
       setCurrentUrl(window.location.href);
+      setOrigin(window.location.origin);
 
       // Obtener todos los meta tags
       const metas = Array.from(document.querySelectorAll("meta")).map(
@@ -129,7 +133,7 @@ export default function DebugOGPage() {
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline font-mono text-sm"
               >
-                {window.location.origin}/opengraph.jpg
+                {origin || "Cargando..."}/opengraph.jpg
               </a>
             </div>
           </div>

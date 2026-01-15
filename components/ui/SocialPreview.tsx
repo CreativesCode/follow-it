@@ -35,7 +35,17 @@ export function SocialPreview({
     requestAnimationFrame(initializeUrls);
   }, [url, imageUrl]);
 
-  if (!mounted) {
+  // Helper para obtener hostname de forma segura
+  const getHostname = (url: string): string => {
+    try {
+      if (!url) return "Cargando...";
+      return new URL(url).hostname;
+    } catch {
+      return url || "Cargando...";
+    }
+  };
+
+  if (!mounted || !currentUrl) {
     return (
       <div className="border rounded-lg p-4 bg-gray-100 animate-pulse">
         <div className="h-48 bg-gray-300 rounded mb-3"></div>
@@ -70,7 +80,7 @@ export function SocialPreview({
             {/* Contenido */}
             <div className="p-3 bg-white">
               <div className="text-xs text-gray-500 mb-1 truncate">
-                {new URL(currentUrl).hostname.toUpperCase()}
+                {getHostname(currentUrl).toUpperCase()}
               </div>
               <div className="font-semibold text-sm text-gray-900 mb-1 line-clamp-2">
                 {title}
@@ -106,7 +116,7 @@ export function SocialPreview({
             {/* Contenido */}
             <div className="p-3 bg-white border-t">
               <div className="text-xs text-gray-500 mb-1 uppercase">
-                {new URL(currentUrl).hostname}
+                {getHostname(currentUrl)}
               </div>
               <div className="font-semibold text-base text-gray-900 mb-1">
                 {title}
@@ -148,7 +158,7 @@ export function SocialPreview({
                 {description}
               </div>
               <div className="text-xs text-gray-500 truncate">
-                🔗 {new URL(currentUrl).hostname}
+                🔗 {getHostname(currentUrl)}
               </div>
             </div>
           </div>
