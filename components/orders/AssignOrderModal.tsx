@@ -3,6 +3,7 @@
 import { CourierSelect } from "@/components/couriers/CourierSelect";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
+import { createClient } from "@/lib/supabase/client";
 import type { OrderWithRelations } from "@/types/orders";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, UserPlus, X } from "lucide-react";
@@ -64,37 +65,150 @@ export function AssignOrderModal({
     setError(null);
 
     try {
+      const supabase = createClient();
+
+      // Obtener usuario autenticado
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("No autorizado");
+      }
+
+      // Verificar que es business member
+      const { data: businessMember, error: memberError } = await supabase
+        .from("business_members")
+        .select("business_id")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (memberError || !businessMember) {
+        throw new Error("Solo los miembros del negocio pueden asignar pedidos");
+      }
+
       // Si se quiere desasignar
       if (!data.courier_id && isAssigned) {
-        const response = await fetch(`/api/orders/${order.id}/assign`, {
-          method: "DELETE",
-        });
+        // Verificar que el pedido existe y pertenece al negocio
+        const { data: existingOrder, error: checkError } = await supabase
+          .from("orders")
+          .select("id, status, business_id")
+          .eq("id", order.id)
+          .eq("business_id", businessMember.business_id)
+          .single();
 
-        if (!response.ok) {
-          const responseData = await response.json();
-          throw new Error(responseData.error);
+        if (checkError || !existingOrder) {
+          throw new Error("Pedido no encontrado");
         }
+
+        // Desasignar
+        const { error: updateError } = await supabase
+          .from("orders")
+          .update({
+            assigned_courier_id: null,
+            assigned_at: null,
+            status: "pending",
+          })
+          .eq("id", order.id);
+
+        if (updateError) throw updateError;
+
+        // Crear evento
+        await supabase.from("order_events").insert({
+          business_id: businessMember.business_id,
+          order_id: order.id,
+          type: "order_unassigned",
+          from_status: existingOrder.status,
+          to_status: "pending",
+          created_by: user.id,
+        });
       }
       // Si se quiere asignar/reasignar
       else if (data.courier_id) {
-        // Si ya está asignado, primero desasignar
+        // Verificar que el pedido existe y está pending
+        const { data: existingOrder, error: orderError } = await supabase
+          .from("orders")
+          .select("id, status, business_id, code, dropoff_address")
+          .eq("id", order.id)
+          .eq("business_id", businessMember.business_id)
+          .single();
+
+        if (orderError || !existingOrder) {
+          throw new Error("Pedido no encontrado");
+        }
+
+        if (existingOrder.status !== "pending" && !isAssigned) {
+          throw new Error(
+            `No se puede asignar un pedido en estado "${existingOrder.status}"`
+          );
+        }
+
+        // Verificar que el courier existe y pertenece al negocio
+        const { data: courier, error: courierError } = await supabase
+          .from("couriers")
+          .select("id, display_name, is_active, user_id")
+          .eq("id", data.courier_id)
+          .eq("business_id", businessMember.business_id)
+          .single();
+
+        if (courierError || !courier) {
+          throw new Error("Mensajero no encontrado");
+        }
+
+        if (!courier.is_active) {
+          throw new Error("El mensajero no está activo");
+        }
+
+        // Si ya está asignado a otro courier, primero desasignar
         if (isAssigned && order.assigned_courier_id !== data.courier_id) {
-          await fetch(`/api/orders/${order.id}/assign`, { method: "DELETE" });
+          await supabase
+            .from("orders")
+            .update({
+              assigned_courier_id: null,
+              assigned_at: null,
+            })
+            .eq("id", order.id);
         }
 
         // Asignar nuevo
-        if (order.status === "pending" || isAssigned) {
-          const response = await fetch(`/api/orders/${order.id}/assign`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ courier_id: data.courier_id }),
-          });
+        const { error: updateError } = await supabase
+          .from("orders")
+          .update({
+            status: "assigned",
+            assigned_courier_id: data.courier_id,
+            assigned_at: new Date().toISOString(),
+          })
+          .eq("id", order.id);
 
-          if (!response.ok) {
-            const responseData = await response.json();
-            throw new Error(responseData.error);
-          }
-        }
+        if (updateError) throw updateError;
+
+        // Crear evento
+        const orderCode = existingOrder.code || `#${order.id.slice(0, 8)}`;
+        await supabase.from("order_events").insert({
+          business_id: businessMember.business_id,
+          order_id: order.id,
+          type: "order_assigned",
+          from_status: existingOrder.status,
+          to_status: "assigned",
+          courier_id: data.courier_id,
+          created_by: user.id,
+          meta: { courier_name: courier.display_name },
+        });
+
+        // Crear notificación para el courier
+        await supabase.from("notifications").insert({
+          user_id: courier.user_id,
+          title: "Nuevo pedido asignado",
+          body: `Se te asignó el pedido ${orderCode}`,
+          type: "order_assigned",
+          data: {
+            order_id: order.id,
+            order_code: orderCode,
+            dropoff_address: existingOrder.dropoff_address,
+          },
+        });
       }
 
       onSuccess();

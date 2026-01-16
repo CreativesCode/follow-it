@@ -41,26 +41,32 @@ export function useNotifications(): UseNotificationsReturn {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch("/api/notifications?limit=50");
+      const supabase = createClient();
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Error fetching notifications:", {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-        });
-        throw new Error(
-          errorData.error ||
-            `Error al obtener notificaciones (${response.status})`
-        );
+      // Obtener usuario autenticado
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        throw new Error("No autenticado");
       }
 
-      const data = await response.json();
-      const notificationsList = data.notifications || [];
+      // Obtener notificaciones directamente de Supabase
+      const { data: notificationsList, error: queryError } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
 
-      console.log(`Fetched ${notificationsList.length} notifications`);
-      setNotifications(notificationsList);
+      if (queryError) {
+        throw queryError;
+      }
+
+      console.log(`Fetched ${notificationsList?.length || 0} notifications`);
+      setNotifications((notificationsList || []) as Notification[]);
     } catch (err) {
       console.error("Error fetching notifications:", err);
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -71,14 +77,27 @@ export function useNotifications(): UseNotificationsReturn {
 
   const markAsRead = async (notificationIds: string[]) => {
     try {
-      const response = await fetch("/api/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notification_ids: notificationIds }),
-      });
+      const supabase = createClient();
 
-      if (!response.ok) {
-        throw new Error("Error al marcar notificaciones como leídas");
+      // Obtener usuario autenticado
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        throw new Error("No autenticado");
+      }
+
+      // Marcar notificaciones como leídas directamente en Supabase
+      const { error: updateError } = await supabase
+        .from("notifications")
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq("user_id", user.id)
+        .in("id", notificationIds);
+
+      if (updateError) {
+        throw updateError;
       }
 
       // Update local state
@@ -97,14 +116,27 @@ export function useNotifications(): UseNotificationsReturn {
 
   const markAllAsRead = async () => {
     try {
-      const response = await fetch("/api/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mark_all_read: true }),
-      });
+      const supabase = createClient();
 
-      if (!response.ok) {
-        throw new Error("Error al marcar todas las notificaciones como leídas");
+      // Obtener usuario autenticado
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        throw new Error("No autenticado");
+      }
+
+      // Marcar todas las notificaciones no leídas como leídas
+      const { error: updateError } = await supabase
+        .from("notifications")
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+
+      if (updateError) {
+        throw updateError;
       }
 
       // Update local state

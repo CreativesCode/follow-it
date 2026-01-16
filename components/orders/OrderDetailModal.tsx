@@ -4,6 +4,7 @@ import { ProofCapture } from "@/components/proofs/ProofCapture";
 import { ProofGallery } from "@/components/proofs/ProofGallery";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
+import { createClient } from "@/lib/supabase/client";
 import { useOrder } from "@/lib/hooks/useOrder";
 import { useUserRole } from "@/lib/hooks/useUserRole";
 import type { OrderFormData } from "@/types/orders";
@@ -90,12 +91,35 @@ export function OrderDetailModal({
     setCopied(false);
 
     try {
-      const response = await fetch("/api/tracking", {
+      const supabase = createClient();
+
+      // Obtener sesión para el token de acceso
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        throw new Error("No autorizado");
+      }
+
+      // Llamar directamente a la Edge Function
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error("Configuración de Supabase faltante");
+      }
+
+      const fnUrl = `${supabaseUrl}/functions/v1/create_tracking_link`;
+
+      const response = await fetch(fnUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           order_id: order.id,
-          expires_in_hours: 168, // 7 días por defecto
+          expires_in_minutes: 168 * 60, // 7 días en minutos
         }),
       });
 
@@ -105,7 +129,14 @@ export function OrderDetailModal({
         throw new Error(data.error || "Error al generar link");
       }
 
-      setTrackingLink(data.tracking_url);
+      // Construir URL completa
+      const baseUrl =
+        process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const trackingUrl = `${baseUrl}/track?token=${encodeURIComponent(
+        data.token
+      )}`;
+
+      setTrackingLink(trackingUrl);
       setTrackingToken(data.token);
     } catch (err: unknown) {
       const errorMessage =
@@ -141,18 +172,39 @@ export function OrderDetailModal({
     setWhatsappError(null);
 
     try {
-      const response = await fetch(
-        `/api/tracking/${trackingToken}/send-whatsapp`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            phone_number: customerPhone,
-            tracking_url: trackingLink,
-            order_code: order.code || `#${order.id.slice(0, 8)}`,
-          }),
-        }
-      );
+      const supabase = createClient();
+
+      // Obtener sesión para el token de acceso
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        throw new Error("No autorizado");
+      }
+
+      // Llamar directamente a la Edge Function
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error("Configuración de Supabase faltante");
+      }
+
+      const fnUrl = `${supabaseUrl}/functions/v1/send_tracking_whatsapp`;
+
+      const response = await fetch(fnUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          token: trackingToken,
+          phone_number: customerPhone,
+          tracking_url: trackingLink,
+          order_code: order.code || `#${order.id.slice(0, 8)}`,
+        }),
+      });
 
       const data = await response.json();
 

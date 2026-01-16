@@ -2,6 +2,8 @@
 
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
+import { createClient } from "@/lib/supabase/client";
+import { changeStatusSchema } from "@/lib/validations/order";
 import {
   recommendsProof,
   requiresNote,
@@ -92,14 +94,35 @@ export function OrderActions({
     setError(null);
 
     try {
-      const response = await fetch(`/api/orders/${orderId}/status`, {
+      const supabase = createClient();
+
+      // Obtener sesión para el token de acceso
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError || !session?.access_token) {
+        throw new Error("No autorizado");
+      }
+
+      // Validar datos con Zod
+      const validatedData = changeStatusSchema.parse({
+        order_id: orderId,
+        to_status: toStatus,
+        note: note.trim() || undefined,
+      });
+
+      // Llamar directamente a la Edge Function
+      const fnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/change_order_status`;
+
+      const response = await fetch(fnUrl, {
         method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to_status: toStatus,
-          note: note.trim() || undefined,
-        }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(validatedData),
       });
 
       const data = await response.json();
@@ -113,9 +136,26 @@ export function OrderActions({
       setShowNoteInput(false);
       onStatusChange();
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Error al cambiar estado";
-      setError(errorMessage);
+      console.error("Error changing order status:", err);
+
+      // Manejar errores de validación de Zod
+      if (
+        err &&
+        typeof err === "object" &&
+        "name" in err &&
+        err.name === "ZodError"
+      ) {
+        const zodError = err as {
+          issues?: Array<{ path: (string | number)[]; message: string }>;
+        };
+        const details =
+          zodError.issues?.map((issue) => issue.message).join(", ") || "";
+        setError(`Datos inválidos: ${details}`);
+      } else {
+        const errorMessage =
+          err instanceof Error ? err.message : "Error al cambiar estado";
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }

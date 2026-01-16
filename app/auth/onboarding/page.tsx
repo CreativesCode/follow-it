@@ -31,23 +31,38 @@ function CourierInvitationStep({ onBack }: { onBack: () => void; user: any }) {
     setValidatedInvitation(null);
 
     try {
-      const response = await fetch("/api/couriers/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invitationCode: invitationCode.toUpperCase() }),
-      });
+      const supabase = createClient();
 
-      const data = await response.json();
+      // Validar código de invitación directamente en Supabase
+      const { data: invitation, error: invitationError } = await supabase
+        .from("courier_invitations")
+        .select(
+          `
+          *,
+          businesses:business_id (
+            id,
+            name
+          )
+        `
+        )
+        .eq("invitation_code", invitationCode.toUpperCase())
+        .eq("status", "pending")
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
 
-      if (!response.ok || !data.valid) {
-        setError(data.error || "Código de invitación inválido o expirado");
+      if (invitationError) {
+        throw invitationError;
+      }
+
+      if (!invitation) {
+        setError("Código de invitación inválido o expirado");
         return;
       }
 
-      setValidatedInvitation(data.invitation);
+      setValidatedInvitation(invitation);
     } catch (err: any) {
       console.error("Error validating invitation:", err);
-      setError("Error al validar el código");
+      setError(err.message || "Error al validar el código");
     } finally {
       setIsValidating(false);
     }
@@ -58,24 +73,37 @@ function CourierInvitationStep({ onBack }: { onBack: () => void; user: any }) {
     setError(null);
 
     try {
-      const response = await fetch("/api/couriers/accept", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ invitationCode: invitationCode.toUpperCase() }),
-      });
+      const supabase = createClient();
 
-      const data = await response.json();
+      // Obtener usuario autenticado
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-      if (!response.ok) {
-        setError(data.error || "Error al aceptar la invitación");
+      if (userError || !user) {
+        setError("No autorizado");
         return;
+      }
+
+      // Aceptar invitación usando RPC function
+      const { data: courierId, error: acceptError } = await supabase.rpc(
+        "accept_courier_invitation",
+        {
+          p_invitation_code: invitationCode.toUpperCase(),
+          p_user_id: user.id,
+        }
+      );
+
+      if (acceptError) {
+        throw acceptError;
       }
 
       // Success! Redirect to dashboard
       router.replace("/dashboard");
     } catch (err: any) {
       console.error("Error accepting invitation:", err);
-      setError("Error al aceptar la invitación");
+      setError(err.message || "Error al aceptar la invitación");
     } finally {
       setIsAccepting(false);
     }

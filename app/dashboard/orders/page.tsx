@@ -1,31 +1,50 @@
-import { getUserRole, requireAuth } from "@/lib/utils/auth";
-import { redirect } from "next/navigation";
-import { Suspense } from "react";
+"use client";
+
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { OrdersPageClient } from "./OrdersPageClient";
 
-export default async function OrdersPage() {
-  // Validar autenticación y obtener rol
-  const user = await requireAuth();
-  const role = await getUserRole(user.id);
+export default function OrdersPage() {
+  const { user, userLoading, roleType, roleLoading, businessMember, courier } =
+    useAuth();
+  const router = useRouter();
 
-  if (!role.type) {
-    redirect("/auth/onboarding");
+  useEffect(() => {
+    if (userLoading || roleLoading) return;
+
+    if (!user) {
+      router.replace("/auth/login");
+      return;
+    }
+
+    if (!roleType) {
+      router.replace("/auth/onboarding");
+      return;
+    }
+  }, [user, roleType, userLoading, roleLoading, router]);
+
+  if (userLoading || roleLoading || !user || !roleType) {
+    return <OrdersPageSkeleton />;
   }
 
   // Obtener business_id según el rol
-  let businessId: string;
-  if (role.type === "business") {
-    businessId = (role.data as { business_id: string }).business_id;
-  } else {
-    // Si es courier, también tiene business_id
-    businessId = (role.data as { business_id: string }).business_id;
+  const businessId =
+    roleType === "business"
+      ? businessMember?.business_id
+      : courier?.business_id;
+
+  if (!businessId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Error: No se pudo obtener el business_id</p>
+        </div>
+      </div>
+    );
   }
 
-  return (
-    <Suspense fallback={<OrdersPageSkeleton />}>
-      <OrdersPageClient businessId={businessId} roleType={role.type} />
-    </Suspense>
-  );
+  return <OrdersPageClient businessId={businessId} roleType={roleType} />;
 }
 
 function OrdersPageSkeleton() {

@@ -1,6 +1,9 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { useUserRole } from "@/lib/hooks/useUserRole";
+import { generateOrderCode } from "@/lib/utils/orderCode";
+import { createOrderSchema, orderFiltersSchema } from "@/lib/validations/order";
 import type {
   Order,
   OrderFilters,
@@ -123,28 +126,96 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
     setError(null);
 
     try {
+      const supabase = createClient();
       const currentFilters = filtersStateRef.current;
-      const params = new URLSearchParams();
-      if (currentFilters.status && currentFilters.status !== "all")
-        params.set("status", currentFilters.status);
-      if (currentFilters.courier_id && currentFilters.courier_id !== "all")
-        params.set("courier_id", currentFilters.courier_id);
-      if (currentFilters.date_from)
-        params.set("date_from", currentFilters.date_from);
-      if (currentFilters.date_to) params.set("date_to", currentFilters.date_to);
-      if (currentFilters.search) params.set("search", currentFilters.search);
-      params.set("page", String(currentPage));
-      params.set("limit", String(currentLimit));
 
-      const response = await fetch(`/api/orders?${params.toString()}`);
-      const data = await response.json();
+      // Obtener usuario y rol
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      if (!response.ok) throw new Error(data.error);
+      if (!user) {
+        throw new Error("No autorizado");
+      }
 
-      setOrders(data.orders);
-      // Solo actualizar paginación si los valores realmente cambiaron para evitar loops
+      // Obtener rol del usuario
+      const { data: businessMember } = await supabase
+        .from("business_members")
+        .select("business_id")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      const { data: courier } = await supabase
+        .from("couriers")
+        .select("id, business_id")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (!businessMember && !courier) {
+        throw new Error("No autorizado");
+      }
+
+      // Query base - RLS manejará los permisos
+      let query = supabase
+        .from("orders")
+        .select(
+          `
+          *,
+          courier:couriers!assigned_courier_id(id, display_name, phone),
+          customer:customers(id, name, phone)
+        `,
+          { count: "exact" }
+        );
+
+      // Si es business member, filtrar por business_id
+      if (businessMember) {
+        query = query.eq("business_id", businessMember.business_id);
+      }
+      // Si es courier, RLS automáticamente filtra por assigned_courier_id
+
+      query = query.order("updated_at", { ascending: false });
+
+      // Aplicar filtros
+      if (currentFilters.status && currentFilters.status !== "all") {
+        query = query.eq("status", currentFilters.status);
+      }
+      if (currentFilters.courier_id && currentFilters.courier_id !== "all") {
+        query = query.eq("assigned_courier_id", currentFilters.courier_id);
+      }
+      if (currentFilters.date_from) {
+        query = query.gte("created_at", currentFilters.date_from);
+      }
+      if (currentFilters.date_to) {
+        query = query.lte("created_at", currentFilters.date_to);
+      }
+      if (currentFilters.search) {
+        query = query.or(
+          `code.ilike.%${currentFilters.search}%,dropoff_address.ilike.%${currentFilters.search}%`
+        );
+      }
+
+      // Paginación
+      const from = (currentPage - 1) * currentLimit;
+      const to = from + currentLimit - 1;
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
+
+      if (error) throw error;
+
+      setOrders((data || []) as OrderWithRelations[]);
+      // Actualizar paginación
       setPagination((prev) => {
-        const newPagination = data.pagination;
+        const total = count || 0;
+        const totalPages = Math.ceil(total / currentLimit);
+        const newPagination = {
+          page: currentPage,
+          limit: currentLimit,
+          total,
+          totalPages,
+        };
         if (
           prev.page === newPagination.page &&
           prev.limit === newPagination.limit &&
@@ -321,25 +392,125 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
   const createOrder = useCallback(
     async (data: OrderFormData) => {
       try {
-        const response = await fetch("/api/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
+        const supabase = createClient();
+
+        // Validar datos con Zod
+        const validatedData = createOrderSchema.parse(data);
+
+        // Obtener usuario autenticado
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+          return { error: "No autorizado" };
+        }
+
+        // Verificar que es business member
+        const { data: businessMember, error: memberError } = await supabase
+          .from("business_members")
+          .select("business_id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (memberError || !businessMember) {
+          return { error: "Solo los miembros del negocio pueden crear pedidos" };
+        }
+
+        // Generar código único
+        const code = await generateOrderCode(supabase, businessMember.business_id);
+
+        // Crear cliente si se proporcionó info
+        let customer_id = null;
+        if (validatedData.customer_name || validatedData.customer_phone) {
+          const { data: customer, error: customerError } = await supabase
+            .from("customers")
+            .insert({
+              business_id: businessMember.business_id,
+              name: validatedData.customer_name,
+              phone: validatedData.customer_phone,
+            })
+            .select("id")
+            .single();
+
+          if (!customerError && customer) {
+            customer_id = customer.id;
+          }
+        }
+
+        // Crear pedido
+        const { data: order, error: orderError } = await supabase
+          .from("orders")
+          .insert({
+            business_id: businessMember.business_id,
+            code,
+            customer_id,
+            dropoff_address: validatedData.dropoff_address,
+            pickup_address: validatedData.pickup_address,
+            dropoff_lat: validatedData.dropoff_lat,
+            dropoff_lng: validatedData.dropoff_lng,
+            items_summary: validatedData.items_summary,
+            notes: validatedData.notes,
+            amount_cents: validatedData.amount_cents,
+            status: "pending",
+            created_by: user.id,
+          })
+          .select(
+            `
+            *,
+            courier:couriers!assigned_courier_id(id, display_name, phone),
+            customer:customers(id, name, phone)
+          `
+          )
+          .single();
+
+        if (orderError) {
+          throw orderError;
+        }
+
+        // Crear evento inicial
+        await supabase.from("order_events").insert({
+          business_id: businessMember.business_id,
+          order_id: order.id,
+          type: "order_created",
+          to_status: "pending",
+          created_by: user.id,
         });
 
-        const result = await response.json();
-
-        if (!response.ok) {
-          return { error: result.error || "Error al crear pedido" };
-        }
+        // Nota: Las notificaciones se pueden crear con un trigger en la base de datos
+        // o usando una Edge Function. Por ahora, las omitimos aquí para simplificar.
 
         // Si Realtime está habilitado, no necesitamos refetch manual
         // Pero lo hacemos por si acaso (mejor tener los datos actualizados)
         if (!shouldEnableRealtime) {
           await fetchOrdersRef.current();
         }
-        return { order: result.order as OrderWithRelations };
+        return { order: order as OrderWithRelations };
       } catch (err) {
+        console.error("Error creating order:", err);
+
+        // Manejar errores de validación de Zod
+        if (
+          err &&
+          typeof err === "object" &&
+          "name" in err &&
+          err.name === "ZodError"
+        ) {
+          const zodError = err as {
+            issues?: Array<{ path: (string | number)[]; message: string }>;
+          };
+          const details =
+            zodError.issues?.map((issue) => ({
+              field: issue.path.join("."),
+              message: issue.message,
+            })) || [];
+          return {
+            error: `Datos inválidos: ${details.map((d) => d.message).join(", ")}`,
+          };
+        }
+
         const errorMessage =
           err instanceof Error ? err.message : "Error al crear pedido";
         return { error: errorMessage };

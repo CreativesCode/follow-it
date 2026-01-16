@@ -3,6 +3,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { FormInput } from "@/components/ui/FormInput";
 import { useRealtimeLocations } from "@/lib/hooks/useRealtimeLocations";
+import { createClient } from "@/lib/supabase/client";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
@@ -72,33 +73,69 @@ export default function CouriersPageClient({
     setSuccess(null);
 
     try {
-      const response = await fetch("/api/couriers/invite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          businessId,
-          courierName: courierName.trim() || null,
-          courierEmail: courierEmail.trim() || null,
-        }),
-      });
+      const supabase = createClient();
 
-      const data = await response.json();
+      // Obtener usuario autenticado
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-      if (!response.ok) {
-        setError(data.error || "Error al crear la invitación");
+      if (userError || !user) {
+        setError("No autorizado");
         return;
       }
 
-      setSuccess(
-        `¡Invitación creada! Código: ${data.invitation.invitation_code}`
+      // Verificar que el usuario es miembro del negocio
+      const { data: membership } = await supabase
+        .from("business_members")
+        .select("role")
+        .eq("business_id", businessId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!membership) {
+        setError("No eres miembro de este negocio");
+        return;
+      }
+
+      // Generar código de invitación usando RPC
+      const { data: codeData, error: codeError } = await supabase.rpc(
+        "generate_invitation_code"
       );
-      setInvitations([data.invitation, ...invitations]);
+
+      if (codeError) {
+        throw codeError;
+      }
+
+      const invitationCode = codeData as string;
+
+      // Crear invitación directamente en Supabase
+      const { data: invitation, error: invitationError } = await supabase
+        .from("courier_invitations")
+        .insert({
+          business_id: businessId,
+          created_by: user.id,
+          invitation_code: invitationCode,
+          courier_email: courierEmail.trim() || null,
+          courier_name: courierName.trim() || null,
+          status: "pending",
+        })
+        .select()
+        .single();
+
+      if (invitationError) {
+        throw invitationError;
+      }
+
+      setSuccess(`¡Invitación creada! Código: ${invitation.invitation_code}`);
+      setInvitations([invitation, ...invitations]);
       setCourierName("");
       setCourierEmail("");
       setShowInviteForm(false);
     } catch (err: any) {
       console.error("Error creating invitation:", err);
-      setError("Error al crear la invitación");
+      setError(err.message || "Error al crear la invitación");
     } finally {
       setIsCreatingInvitation(false);
     }
