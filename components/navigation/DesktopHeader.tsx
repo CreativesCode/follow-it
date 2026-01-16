@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser } from "@/lib/hooks/useUser";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -12,7 +12,7 @@ type Props = {
 };
 
 export function DesktopHeader({ title }: Props) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const [showSearchModal, setShowSearchModal] = useState(false);
   const router = useRouter();
 

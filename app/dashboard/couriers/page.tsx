@@ -30,48 +30,74 @@ export default function CouriersPage() {
       return;
     }
 
+    // Si ya tenemos el businessId, no recargar
+    if (businessId) {
+      setLoading(false);
+      return;
+    }
+
+    let mounted = true;
+
     // Load business data
     const loadData = async () => {
       const supabase = createClient();
 
-      // Get business info
-      const { data: businessMember } = await supabase
-        .from("business_members")
-        .select("business_id, businesses:business_id(id, name)")
-        .eq("user_id", user.id)
-        .single();
+      try {
+        // Get business info
+        const { data: businessMember } = await supabase
+          .from("business_members")
+          .select("business_id, businesses:business_id(id, name)")
+          .eq("user_id", user.id)
+          .single();
 
-      if (!businessMember || !businessMember.businesses) {
-        router.replace("/dashboard");
-        return;
+        if (!mounted) return;
+
+        if (!businessMember || !businessMember.businesses) {
+          router.replace("/dashboard");
+          return;
+        }
+
+        const bid = businessMember.business_id;
+        const bname = (businessMember.businesses as any).name;
+        
+        if (!mounted) return;
+
+        setBusinessId(bid);
+        setBusinessName(bname);
+
+        // Get couriers for this business
+        const { data: couriersData } = await supabase
+          .from("couriers")
+          .select("*")
+          .eq("business_id", bid)
+          .order("created_at", { ascending: false });
+
+        // Get invitations for this business
+        const { data: invitationsData } = await supabase
+          .from("courier_invitations")
+          .select("*")
+          .eq("business_id", bid)
+          .order("created_at", { ascending: false });
+
+        if (!mounted) return;
+
+        setCouriers(couriersData || []);
+        setInvitations(invitationsData || []);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error loading couriers data:", error);
+        if (mounted) {
+          setLoading(false);
+        }
       }
-
-      const bid = businessMember.business_id;
-      const bname = (businessMember.businesses as any).name;
-      setBusinessId(bid);
-      setBusinessName(bname);
-
-      // Get couriers for this business
-      const { data: couriersData } = await supabase
-        .from("couriers")
-        .select("*")
-        .eq("business_id", bid)
-        .order("created_at", { ascending: false });
-
-      // Get invitations for this business
-      const { data: invitationsData } = await supabase
-        .from("courier_invitations")
-        .select("*")
-        .eq("business_id", bid)
-        .order("created_at", { ascending: false });
-
-      setCouriers(couriersData || []);
-      setInvitations(invitationsData || []);
-      setLoading(false);
     };
 
     loadData();
-  }, [user, roleType, userLoading, roleLoading, router]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [user, roleType, userLoading, roleLoading, router, businessId]);
 
   if (userLoading || roleLoading || loading || !businessId) {
     return (

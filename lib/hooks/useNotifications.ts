@@ -5,7 +5,7 @@ import type {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
 } from "@supabase/supabase-js";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export interface Notification {
   id: string;
@@ -36,49 +36,68 @@ export function useNotifications(): UseNotificationsReturn {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const userIdRef = useRef<string | null>(null);
 
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
+
   const fetchNotifications = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch("/api/notifications?limit=50");
+      // Obtener usuario autenticado
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("Error fetching notifications:", {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-        });
-        throw new Error(
-          errorData.error ||
-            `Error al obtener notificaciones (${response.status})`
-        );
+      if (authError || !user) {
+        throw new Error("No autenticado");
       }
 
-      const data = await response.json();
-      const notificationsList = data.notifications || [];
+      // Obtener notificaciones directamente de Supabase
+      const { data: notificationsList, error: queryError } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
 
-      console.log(`Fetched ${notificationsList.length} notifications`);
-      setNotifications(notificationsList);
+      if (queryError) {
+        throw queryError;
+      }
+
+      console.log(`Fetched ${notificationsList?.length || 0} notifications`);
+      setNotifications((notificationsList || []) as Notification[]);
     } catch (err) {
       console.error("Error fetching notifications:", err);
       setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
-  const markAsRead = async (notificationIds: string[]) => {
+  const markAsRead = useCallback(async (notificationIds: string[]) => {
     try {
-      const response = await fetch("/api/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notification_ids: notificationIds }),
-      });
 
-      if (!response.ok) {
-        throw new Error("Error al marcar notificaciones como leídas");
+      // Obtener usuario autenticado
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        throw new Error("No autenticado");
+      }
+
+      // Marcar notificaciones como leídas directamente en Supabase
+      const { error: updateError } = await supabase
+        .from("notifications")
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq("user_id", user.id)
+        .in("id", notificationIds);
+
+      if (updateError) {
+        throw updateError;
       }
 
       // Update local state
@@ -93,18 +112,30 @@ export function useNotifications(): UseNotificationsReturn {
       console.error("Error marking notifications as read:", err);
       throw err;
     }
-  };
+  }, [supabase]);
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
-      const response = await fetch("/api/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mark_all_read: true }),
-      });
 
-      if (!response.ok) {
-        throw new Error("Error al marcar todas las notificaciones como leídas");
+      // Obtener usuario autenticado
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        throw new Error("No autenticado");
+      }
+
+      // Marcar todas las notificaciones no leídas como leídas
+      const { error: updateError } = await supabase
+        .from("notifications")
+        .update({ is_read: true, read_at: new Date().toISOString() })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+
+      if (updateError) {
+        throw updateError;
       }
 
       // Update local state
@@ -119,12 +150,11 @@ export function useNotifications(): UseNotificationsReturn {
       console.error("Error marking all notifications as read:", err);
       throw err;
     }
-  };
+  }, [supabase]);
 
   // Set up realtime subscription
   useEffect(() => {
     let mounted = true;
-    const supabase = createClient();
 
     const setupRealtime = async () => {
       // Get current user
@@ -256,7 +286,7 @@ export function useNotifications(): UseNotificationsReturn {
       }
       userIdRef.current = null;
     };
-  }, [fetchNotifications]); // fetchNotifications is memoized with useCallback
+  }, [fetchNotifications, supabase]); // fetchNotifications is memoized with useCallback
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 

@@ -2,9 +2,11 @@
 
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/lib/contexts/AuthContext";
+import { createClient } from "@/lib/supabase/client";
 import { Loader2, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Props = {
   isOpen: boolean;
@@ -18,6 +20,10 @@ export function OrderSearchModal({ isOpen, onClose, onOrderFound }: Props) {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const { businessMember, courier } = useAuth();
+
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
 
   // Log cuando cambia el estado de loading
   useEffect(() => {
@@ -63,72 +69,102 @@ export function OrderSearchModal({ isOpen, onClose, onOrderFound }: Props) {
     console.log("[OrderSearchModal] Loading establecido a true");
 
     try {
-      // Remover el # del inicio si existe y codificar la URL correctamente
-      const searchId = trimmedId.startsWith("#")
-        ? trimmedId.substring(1)
-        : trimmedId;
-      const encodedId = encodeURIComponent(searchId);
+      // Usar businessMember/courier del contexto si está disponible
+      let effectiveBusinessMember = businessMember;
+      let effectiveCourier = courier;
 
-      console.log(
-        "[OrderSearchModal] Haciendo fetch a:",
-        `/api/orders/${encodedId}`
-      );
-      const response = await fetch(`/api/orders/${encodedId}`);
-      console.log(
-        "[OrderSearchModal] Response recibido, status:",
-        response.status
-      );
+      if (!effectiveBusinessMember && !effectiveCourier) {
+        // Solo consultar si no tenemos datos del contexto
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
 
-      const data = await response.json();
-      console.log("[OrderSearchModal] Data parseada:", data);
-
-      if (!response.ok) {
-        console.log("[OrderSearchModal] Response no OK, estableciendo error");
-        if (response.status === 404) {
-          setError(
-            "Pedido no encontrado. Verifica el ID e intenta nuevamente."
-          );
-        } else {
-          setError(data.error || "Error al buscar el pedido");
+        if (userError || !user) {
+          setError("No autorizado");
+          setLoading(false);
+          return;
         }
+
+        const { data: bm } = await supabase
+          .from("business_members")
+          .select("business_id, user_id, role, is_active, created_at")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        const { data: c } = await supabase
+          .from("couriers")
+          .select(
+            "id, business_id, user_id, display_name, phone, is_active, created_at"
+          )
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (!bm && !c) {
+          setError("No autorizado");
+          setLoading(false);
+          return;
+        }
+
+        effectiveBusinessMember = bm ?? undefined;
+        effectiveCourier = c ?? undefined;
+      }
+
+      // Preparar el ID de búsqueda (puede ser UUID o código)
+      const searchId = trimmedId;
+
+      // Query base - RLS manejará los permisos
+      let query = supabase.from("orders").select(
+        `
+        *,
+        courier:couriers!assigned_courier_id(id, display_name, phone),
+        customer:customers(id, name, phone)
+      `
+      );
+
+      // Buscar por ID (UUID) o por código
+      const isUUID =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          searchId
+        );
+
+      if (isUUID) {
+        query = query.eq("id", searchId);
+      } else {
+        // Asegurar que el código tenga el # al inicio
+        const codeToSearch = searchId.startsWith("#")
+          ? searchId
+          : `#${searchId}`;
+        query = query.eq("code", codeToSearch);
+      }
+
+      // Si es business member, filtrar por business_id
+      if (effectiveBusinessMember) {
+        query = query.eq("business_id", effectiveBusinessMember.business_id);
+      }
+      // Si es courier, RLS automáticamente filtra por assigned_courier_id
+
+      const { data: order, error } = await query.single();
+
+      if (error || !order) {
+        setError("Pedido no encontrado. Verifica el ID e intenta nuevamente.");
         setLoading(false);
-        console.log("[OrderSearchModal] Loading establecido a false (error)");
         return;
       }
 
       // Orden encontrada
-      const foundOrderId = data.order?.id;
+      const foundOrderId = order.id;
       console.log("[OrderSearchModal] Orden encontrada, ID:", foundOrderId);
 
-      if (foundOrderId) {
-        console.log(
-          "[OrderSearchModal] Estableciendo loading a false ANTES de setLoading"
-        );
-        setLoading(false);
-        console.log("[OrderSearchModal] setLoading(false) ejecutado");
+      setLoading(false);
 
-        // Llamar al callback de orden encontrada (esto navegará)
-        if (onOrderFound) {
-          console.log(
-            "[OrderSearchModal] Llamando onOrderFound con ID:",
-            foundOrderId
-          );
-          onOrderFound(foundOrderId);
-        } else {
-          console.log(
-            "[OrderSearchModal] Navegando directamente con router.push"
-          );
-          router.push(`/dashboard/orders?orderId=${foundOrderId}`);
-        }
-
-        console.log("[OrderSearchModal] handleSearch completado");
-        return;
+      // Llamar al callback de orden encontrada (esto navegará)
+      if (onOrderFound) {
+        onOrderFound(foundOrderId);
       } else {
-        console.log(
-          "[OrderSearchModal] No se encontró order.id en la respuesta"
-        );
-        setError("Pedido no encontrado");
-        setLoading(false);
+        router.push(`/dashboard/orders?orderId=${foundOrderId}`);
       }
     } catch (err: unknown) {
       console.error("[OrderSearchModal] Error en handleSearch:", err);

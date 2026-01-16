@@ -1,10 +1,11 @@
 "use client";
 
+import { createClient } from "@/lib/supabase/client";
 import type { OrderProofWithUrl } from "@/types/proofs";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { Clock, FileSignature, Image, Loader2, MapPin, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Props = {
   orderId: string;
@@ -16,6 +17,9 @@ export function ProofGallery({ orderId }: Props) {
   const [selectedProof, setSelectedProof] = useState<OrderProofWithUrl | null>(
     null
   );
+
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
 
   console.log("ProofGallery: Renderizando con orderId", {
     orderId,
@@ -33,53 +37,50 @@ export function ProofGallery({ orderId }: Props) {
 
     async function fetchProofs() {
       try {
-        const url = `/api/orders/${encodeURIComponent(orderId.trim())}/proofs`;
-        console.log("ProofGallery: Fetching proofs from", url);
-        const response = await fetch(url);
+        // Obtener usuario autenticado
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
 
-        // Verificar que la respuesta tenga contenido
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          console.error("ProofGallery: Respuesta no es JSON:", contentType);
+        if (userError || !user) {
+          console.error("ProofGallery: No autorizado");
           setLoading(false);
           return;
         }
 
-        // Verificar que haya contenido antes de parsear
-        const text = await response.text();
-        if (!text || text.trim() === "") {
-          console.error("ProofGallery: Respuesta vacía");
+        // Obtener proofs directamente de Supabase
+        const { data: proofsData, error: proofsError } = await supabase
+          .from("order_proofs")
+          .select("*")
+          .eq("order_id", orderId.trim())
+          .order("captured_at", { ascending: false });
+
+        if (proofsError) {
+          console.error("ProofGallery: Error obteniendo proofs:", proofsError);
           setLoading(false);
           return;
         }
 
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch (parseError) {
-          console.error(
-            "ProofGallery: Error al parsear JSON:",
-            parseError,
-            "Texto:",
-            text
-          );
-          setLoading(false);
-          return;
-        }
+        // Generar signed URLs para cada proof
+        const proofsWithUrls = await Promise.all(
+          (proofsData || []).map(async (proof) => {
+            // Generar signed URL para cada proof
+            const { data: urlData } = await supabase.storage
+              .from("proofs")
+              .createSignedUrl(proof.storage_path, 15 * 60); // 15 minutos
 
-        if (response.ok) {
-          console.log(
-            `ProofGallery: ${data.proofs?.length || 0} proofs encontrados`
-          );
-          setProofs(data.proofs || []);
-        } else {
-          console.error(
-            "ProofGallery: Error en respuesta:",
-            data.error || "Error desconocido",
-            "Status:",
-            response.status
-          );
-        }
+            return {
+              ...proof,
+              signed_url: urlData?.signedUrl || null,
+            } as OrderProofWithUrl;
+          })
+        );
+
+        console.log(
+          `ProofGallery: ${proofsWithUrls.length} proofs encontrados`
+        );
+        setProofs(proofsWithUrls);
       } catch (err) {
         console.error("ProofGallery: Error fetching proofs:", err);
       } finally {
@@ -165,19 +166,23 @@ function ProofViewer({
   );
   const [loading, setLoading] = useState(!proof.signed_url);
 
+  // Memoizar el cliente de Supabase para el visor
+  const supabaseForViewer = useMemo(() => createClient(), []);
+
   useEffect(() => {
     if (!proof.signed_url) {
-      // Obtener signed URL
-      fetch(`/api/proofs/${proof.id}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.signed_url) {
-            setImageUrl(data.signed_url);
+      // Obtener signed URL directamente de Supabase Storage
+      supabaseForViewer.storage
+        .from("proofs")
+        .createSignedUrl(proof.storage_path, 15 * 60) // 15 minutos
+        .then(({ data: urlData, error }) => {
+          if (!error && urlData?.signedUrl) {
+            setImageUrl(urlData.signedUrl);
           }
         })
         .finally(() => setLoading(false));
     }
-  }, [proof]);
+  }, [proof, supabaseForViewer]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex flex-col safe-area-inset modal-container">

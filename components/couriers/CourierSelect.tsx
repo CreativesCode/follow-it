@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { User, ChevronDown, Check, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Check, ChevronDown, Loader2, User } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 type Courier = {
   id: string;
@@ -32,9 +32,11 @@ export function CourierSelect({
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
 
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
+
   useEffect(() => {
     async function fetchCouriers() {
-      const supabase = createClient();
       const { data, error } = await supabase
         .from("couriers")
         .select("id, display_name, phone, is_active")
@@ -49,7 +51,7 @@ export function CourierSelect({
     }
 
     fetchCouriers();
-  }, [businessId]);
+  }, [businessId, supabase]);
 
   const selectedCourier = couriers.find((c) => c.id === value);
 

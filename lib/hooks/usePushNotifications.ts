@@ -85,27 +85,65 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         // Determinar plataforma
         const platform = Capacitor.getPlatform() === "ios" ? "ios" : "android";
 
-        // Registrar token en el backend
+        // Registrar token directamente en Supabase
         try {
-          const response = await fetch("/api/notifications/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              token: deviceToken,
-              platform,
-            }),
-          });
+          const {
+            data: { user },
+            error: authError,
+          } = await supabase.auth.getUser();
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error("Error registering device token:", errorData);
-            setError("Error al registrar token de dispositivo");
+          if (authError || !user) {
+            throw new Error("No autenticado");
+          }
+
+          // Verificar si el token ya existe
+          const { data: existingToken, error: checkError } = await supabase
+            .from("device_tokens")
+            .select("id, is_active")
+            .eq("user_id", user.id)
+            .eq("token", deviceToken)
+            .maybeSingle();
+
+          if (checkError && checkError.code !== "PGRST116") {
+            // PGRST116 es "not found", lo cual está bien
+            throw checkError;
+          }
+
+          if (existingToken) {
+            // Actualizar token existente
+            const { error: updateError } = await supabase
+              .from("device_tokens")
+              .update({
+                is_active: true,
+                platform,
+                last_used_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", existingToken.id);
+
+            if (updateError) throw updateError;
+            console.log("Device token updated successfully");
           } else {
+            // Insertar nuevo token
+            const { error: insertError } = await supabase
+              .from("device_tokens")
+              .insert({
+                user_id: user.id,
+                token: deviceToken,
+                platform,
+                is_active: true,
+              });
+
+            if (insertError) throw insertError;
             console.log("Device token registered successfully");
           }
         } catch (err) {
           console.error("Error registering device token:", err);
-          setError("Error al registrar token de dispositivo");
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Error al registrar token de dispositivo"
+          );
         }
       });
 
@@ -153,12 +191,18 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     try {
       if (token) {
-        // Desregistrar token en el backend
-        await fetch("/api/notifications/register", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
-        });
+        // Desactivar token en Supabase (soft delete)
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user) {
+          await supabase
+            .from("device_tokens")
+            .update({ is_active: false })
+            .eq("user_id", user.id)
+            .eq("token", token);
+        }
       }
 
       // Remover listeners

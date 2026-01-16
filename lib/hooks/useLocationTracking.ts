@@ -1,5 +1,10 @@
 "use client";
 
+import { createClient } from "@/lib/supabase/client";
+import {
+  locationBatchSchema,
+  locationPingSchema,
+} from "@/lib/validations/location";
 import type { LocationPing } from "@/types/location";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -211,18 +216,63 @@ export function useLocationTracking(
   );
   const watchIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Enviar ping al servidor
+  // Enviar ping al servidor usando Supabase directo
   const sendPing = useCallback(async (ping: LocationPing) => {
     try {
-      const response = await fetch("/api/locations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ping),
-      });
+      const supabase = createClient();
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to send location");
+      // Validar ping con Zod
+      const validatedPing = locationPingSchema.parse(ping);
+
+      // Obtener usuario autenticado
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        throw new Error("No autorizado");
+      }
+
+      // Obtener courier del usuario
+      const { data: courier, error: courierError } = await supabase
+        .from("couriers")
+        .select("id, business_id, is_active")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .single();
+
+      if (courierError || !courier) {
+        throw new Error("No eres un mensajero activo");
+      }
+
+      // Verificar que tiene pedidos activos
+      const { count: activeOrders } = await supabase
+        .from("orders")
+        .select("*", { count: "exact", head: true })
+        .eq("assigned_courier_id", courier.id)
+        .in("status", ["assigned", "en_route"]);
+
+      if (!activeOrders || activeOrders === 0) {
+        throw new Error("No tienes pedidos activos, tracking deshabilitado");
+      }
+
+      // Insertar ping directamente en Supabase
+      const { error: insertError } = await supabase
+        .from("courier_locations")
+        .insert({
+          business_id: courier.business_id,
+          courier_id: courier.id,
+          lat: validatedPing.lat,
+          lng: validatedPing.lng,
+          accuracy_m: validatedPing.accuracy_m ?? null,
+          speed_mps: validatedPing.speed_mps ?? null,
+          heading: validatedPing.heading ?? null,
+          recorded_at: validatedPing.recorded_at || new Date().toISOString(),
+        });
+
+      if (insertError) {
+        throw insertError;
       }
 
       lastSentRef.current = {
@@ -238,20 +288,59 @@ export function useLocationTracking(
     }
   }, []);
 
-  // Enviar cola offline
+  // Enviar cola offline usando Supabase directo
   const flushOfflineQueue = useCallback(async () => {
     if (offlineQueue.length === 0) return;
 
     try {
-      const response = await fetch("/api/locations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pings: offlineQueue }),
-      });
+      const supabase = createClient();
 
-      if (response.ok) {
-        setOfflineQueue([]);
+      // Validar batch con Zod
+      const validatedBatch = locationBatchSchema.parse({ pings: offlineQueue });
+
+      // Obtener usuario autenticado
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        throw new Error("No autorizado");
       }
+
+      // Obtener courier del usuario
+      const { data: courier, error: courierError } = await supabase
+        .from("couriers")
+        .select("id, business_id, is_active")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .single();
+
+      if (courierError || !courier) {
+        throw new Error("No eres un mensajero activo");
+      }
+
+      // Insertar todos los pings en batch
+      const inserts = validatedBatch.pings.map((ping) => ({
+        business_id: courier.business_id,
+        courier_id: courier.id,
+        lat: ping.lat,
+        lng: ping.lng,
+        accuracy_m: ping.accuracy_m ?? null,
+        speed_mps: ping.speed_mps ?? null,
+        heading: ping.heading ?? null,
+        recorded_at: ping.recorded_at || new Date().toISOString(),
+      }));
+
+      const { error: insertError } = await supabase
+        .from("courier_locations")
+        .insert(inserts);
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      setOfflineQueue([]);
     } catch (err) {
       console.error("Error flushing offline queue:", err);
     }

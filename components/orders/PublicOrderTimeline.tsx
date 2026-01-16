@@ -166,7 +166,23 @@ export function PublicOrderTimeline({ token }: Props) {
   useEffect(() => {
     async function fetchEvents() {
       try {
-        const response = await fetch(`/api/tracking/${token}/events`);
+        // Llamar directamente a la Edge Function
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        if (!supabaseUrl || !anonKey) {
+          throw new Error("Configuración de Supabase faltante");
+        }
+
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/get_tracking_events?token=${token}`,
+          {
+            headers: {
+              Authorization: `Bearer ${anonKey}`,
+            },
+          }
+        );
+
         const data = await response.json();
 
         if (!response.ok) throw new Error(data.error);
