@@ -1,7 +1,7 @@
 "use client";
 
 import type { OrderWithRelations } from "@/types/orders";
-import { useUserRole } from "@/lib/hooks/useUserRole";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { Clock, MapPin, Package, User } from "lucide-react";
@@ -14,7 +14,7 @@ type Props = {
 };
 
 export function OrderCard({ order, onClick, selected }: Props) {
-  const { type: roleType } = useUserRole();
+  const { roleType } = useAuth();
   const isCourier = roleType === "courier";
 
   const handleClick = () => {

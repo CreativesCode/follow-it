@@ -2,16 +2,14 @@
 
 import { Button } from "@/components/ui/Button";
 import { logout } from "@/lib/auth/client-actions";
-import { useUser } from "@/lib/hooks/useUser";
-import { useUserRole } from "@/lib/hooks/useUserRole";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { Home, LogOut, Package, Users } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 export function DesktopSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { type: roleType } = useUserRole();
-  const { user } = useUser();
+  const { roleType, user } = useAuth();
 
   const isBusiness = roleType === "business";
 

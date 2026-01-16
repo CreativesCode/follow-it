@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { OrderEvent } from "@/types/database";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 // Evento con relaciones desde la API
 type OrderEventWithRelations = OrderEvent & {
@@ -24,6 +24,9 @@ export function useOrderEvents(orderId: string | null): UseOrderEventsReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
+
   const fetchEvents = useCallback(async () => {
     if (!orderId) {
       setEvents([]);
@@ -35,7 +38,6 @@ export function useOrderEvents(orderId: string | null): UseOrderEventsReturn {
     setError(null);
 
     try {
-      const supabase = createClient();
 
       // Obtener usuario autenticado
       const {
@@ -76,7 +78,7 @@ export function useOrderEvents(orderId: string | null): UseOrderEventsReturn {
     } finally {
       setLoading(false);
     }
-  }, [orderId]);
+  }, [orderId, supabase]);
 
   useEffect(() => {
     fetchEvents();

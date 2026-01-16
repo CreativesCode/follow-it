@@ -2,10 +2,11 @@
 
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Props = {
   isOpen: boolean;
@@ -19,6 +20,10 @@ export function OrderSearchModal({ isOpen, onClose, onOrderFound }: Props) {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const { businessMember, courier } = useAuth();
+
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
 
   // Log cuando cambia el estado de loading
   useEffect(() => {
@@ -64,39 +69,47 @@ export function OrderSearchModal({ isOpen, onClose, onOrderFound }: Props) {
     console.log("[OrderSearchModal] Loading establecido a true");
 
     try {
-      const supabase = createClient();
+      // Usar businessMember/courier del contexto si está disponible
+      let effectiveBusinessMember = businessMember;
+      let effectiveCourier = courier;
 
-      // Obtener usuario autenticado
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      if (!effectiveBusinessMember && !effectiveCourier) {
+        // Solo consultar si no tenemos datos del contexto
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        setError("No autorizado");
-        setLoading(false);
-        return;
-      }
+        if (userError || !user) {
+          setError("No autorizado");
+          setLoading(false);
+          return;
+        }
 
-      // Obtener rol del usuario
-      const { data: businessMember } = await supabase
-        .from("business_members")
-        .select("business_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle();
+        const { data: bm } = await supabase
+          .from("business_members")
+          .select("business_id, user_id, role, is_active, created_at")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
 
-      const { data: courier } = await supabase
-        .from("couriers")
-        .select("id, business_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle();
+        const { data: c } = await supabase
+          .from("couriers")
+          .select(
+            "id, business_id, user_id, display_name, phone, is_active, created_at"
+          )
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
 
-      if (!businessMember && !courier) {
-        setError("No autorizado");
-        setLoading(false);
-        return;
+        if (!bm && !c) {
+          setError("No autorizado");
+          setLoading(false);
+          return;
+        }
+
+        effectiveBusinessMember = bm ?? undefined;
+        effectiveCourier = c ?? undefined;
       }
 
       // Preparar el ID de búsqueda (puede ser UUID o código)
@@ -121,13 +134,15 @@ export function OrderSearchModal({ isOpen, onClose, onOrderFound }: Props) {
         query = query.eq("id", searchId);
       } else {
         // Asegurar que el código tenga el # al inicio
-        const codeToSearch = searchId.startsWith("#") ? searchId : `#${searchId}`;
+        const codeToSearch = searchId.startsWith("#")
+          ? searchId
+          : `#${searchId}`;
         query = query.eq("code", codeToSearch);
       }
 
       // Si es business member, filtrar por business_id
-      if (businessMember) {
-        query = query.eq("business_id", businessMember.business_id);
+      if (effectiveBusinessMember) {
+        query = query.eq("business_id", effectiveBusinessMember.business_id);
       }
       // Si es courier, RLS automáticamente filtra por assigned_courier_id
 

@@ -1,9 +1,8 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { useUserRole } from "@/lib/hooks/useUserRole";
 import { generateOrderCode } from "@/lib/utils/orderCode";
-import { createOrderSchema, orderFiltersSchema } from "@/lib/validations/order";
+import { createOrderSchema } from "@/lib/validations/order";
 import type {
   Order,
   OrderFilters,
@@ -58,6 +57,9 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
     ...filters
   } = initialFilters || {};
   const shouldEnableRealtime = businessId && enableRealtime;
+
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
 
   const [filtersState, setFiltersState] = useState<OrderFilters>({
     status: "all",
@@ -126,52 +128,63 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
     setError(null);
 
     try {
-      const supabase = createClient();
       const currentFilters = filtersStateRef.current;
 
-      // Obtener usuario y rol
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      // Si ya tenemos businessId, usarlo directamente sin consultar business_members
+      let effectiveBusinessId: string | null = null;
 
-      if (!user) {
-        throw new Error("No autorizado");
-      }
+      if (businessId) {
+        // Si businessId viene como parámetro, usarlo directamente
+        effectiveBusinessId = businessId;
+      } else {
+        // Solo consultar business_members si no tenemos businessId
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      // Obtener rol del usuario
-      const { data: businessMember } = await supabase
-        .from("business_members")
-        .select("business_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle();
+        if (!user) {
+          throw new Error("No autorizado");
+        }
 
-      const { data: courier } = await supabase
-        .from("couriers")
-        .select("id, business_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle();
+        // Obtener rol del usuario
+        const { data: businessMember } = await supabase
+          .from("business_members")
+          .select("business_id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
 
-      if (!businessMember && !courier) {
-        throw new Error("No autorizado");
+        const { data: courier } = await supabase
+          .from("couriers")
+          .select("id, business_id")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (!businessMember && !courier) {
+          throw new Error("No autorizado");
+        }
+
+        if (businessMember) {
+          effectiveBusinessId = businessMember.business_id;
+        } else if (courier) {
+          effectiveBusinessId = courier.business_id;
+        }
       }
 
       // Query base - RLS manejará los permisos
-      let query = supabase
-        .from("orders")
-        .select(
-          `
+      let query = supabase.from("orders").select(
+        `
           *,
           courier:couriers!assigned_courier_id(id, display_name, phone),
           customer:customers(id, name, phone)
         `,
-          { count: "exact" }
-        );
+        { count: "exact" }
+      );
 
-      // Si es business member, filtrar por business_id
-      if (businessMember) {
-        query = query.eq("business_id", businessMember.business_id);
+      // Si tenemos businessId, filtrar por business_id
+      if (effectiveBusinessId) {
+        query = query.eq("business_id", effectiveBusinessId);
       }
       // Si es courier, RLS automáticamente filtra por assigned_courier_id
 
@@ -234,7 +247,7 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
       setLoading(false);
       fetchingRef.current = false;
     }
-  }, [filtersKey]); // Solo depende de filtersKey, los demás valores vienen de refs
+  }, [filtersKey, supabase, businessId]); // Incluir supabase y businessId en dependencias
 
   // Ref para mantener referencia estable a fetchOrders para realtime
   const fetchOrdersRef = useRef(fetchOrders);
@@ -242,24 +255,26 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
     fetchOrdersRef.current = fetchOrders;
   }, [fetchOrders]);
 
+  // Memoizar supabase para el setup de realtime
+  const supabaseForRealtime = useMemo(() => createClient(), []);
+
   // Set up Realtime subscription
   useEffect(() => {
     if (!shouldEnableRealtime || !businessId) return;
 
     let mounted = true;
-    const supabase = createClient();
 
     const setupRealtime = () => {
       console.log(`Setting up orders realtime for business: ${businessId}`);
 
       // Clean up any existing channel
       if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
+        supabaseForRealtime.removeChannel(channelRef.current);
         channelRef.current = null;
       }
 
       // Set up realtime subscription for orders
-      const channel = supabase
+      const channel = supabaseForRealtime
         .channel(`orders:${businessId}`)
         .on<Order>(
           "postgres_changes",
@@ -361,7 +376,7 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
       if (mounted) {
         channelRef.current = channel;
       } else {
-        supabase.removeChannel(channel);
+        supabaseForRealtime.removeChannel(channel);
       }
     };
 
@@ -371,11 +386,11 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
       mounted = false;
       if (channelRef.current) {
         console.log("Cleaning up orders channel");
-        supabase.removeChannel(channelRef.current);
+        supabaseForRealtime.removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };
-  }, [businessId, shouldEnableRealtime]);
+  }, [businessId, shouldEnableRealtime, supabaseForRealtime]);
 
   // Ejecutar fetchOrders cuando cambien los filtros o la paginación
   // Usamos filtersKey en lugar de filtersState para evitar loops por cambio de referencia
@@ -392,8 +407,6 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
   const createOrder = useCallback(
     async (data: OrderFormData) => {
       try {
-        const supabase = createClient();
-
         // Validar datos con Zod
         const validatedData = createOrderSchema.parse(data);
 
@@ -416,11 +429,16 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
           .maybeSingle();
 
         if (memberError || !businessMember) {
-          return { error: "Solo los miembros del negocio pueden crear pedidos" };
+          return {
+            error: "Solo los miembros del negocio pueden crear pedidos",
+          };
         }
 
         // Generar código único
-        const code = await generateOrderCode(supabase, businessMember.business_id);
+        const code = await generateOrderCode(
+          supabase,
+          businessMember.business_id
+        );
 
         // Crear cliente si se proporcionó info
         let customer_id = null;
@@ -507,7 +525,9 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
               message: issue.message,
             })) || [];
           return {
-            error: `Datos inválidos: ${details.map((d) => d.message).join(", ")}`,
+            error: `Datos inválidos: ${details
+              .map((d) => d.message)
+              .join(", ")}`,
           };
         }
 
@@ -516,7 +536,7 @@ export function useOrders(initialFilters?: UseOrdersOptions): UseOrdersReturn {
         return { error: errorMessage };
       }
     },
-    [shouldEnableRealtime]
+    [shouldEnableRealtime, supabase]
   );
 
   return {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Courier = {
@@ -29,12 +29,14 @@ export function useCouriers(businessId: string): UseCouriersReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
+
   const fetchCouriers = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const supabase = createClient();
 
       // Obtener mensajeros
       const { data, error: fetchError } = await supabase
@@ -68,7 +70,7 @@ export function useCouriers(businessId: string): UseCouriersReturn {
     } finally {
       setLoading(false);
     }
-  }, [businessId]);
+  }, [businessId, supabase]);
 
   useEffect(() => {
     fetchCouriers();

@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/client";
 import type { CourierWithLocation } from "@/types/location";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type UseRealtimeLocationsReturn = {
   couriers: CourierWithLocation[];
@@ -18,10 +18,12 @@ export function useRealtimeLocations(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
+
   // Fetch inicial
   const fetchCouriersWithLocations = useCallback(async () => {
     try {
-      const supabase = createClient();
 
       // Obtener mensajeros activos
       const { data: couriersData, error: couriersError } = await supabase
@@ -77,13 +79,11 @@ export function useRealtimeLocations(
     } finally {
       setLoading(false);
     }
-  }, [businessId]);
+  }, [businessId, supabase]);
 
   // Setup inicial + realtime
   useEffect(() => {
     fetchCouriersWithLocations();
-
-    const supabase = createClient();
 
     // Suscribirse a cambios en courier_locations
     const channel = supabase
@@ -150,7 +150,7 @@ export function useRealtimeLocations(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [businessId, fetchCouriersWithLocations]);
+  }, [businessId, fetchCouriersWithLocations, supabase]);
 
   return {
     couriers,

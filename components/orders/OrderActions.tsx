@@ -2,13 +2,13 @@
 
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { createClient } from "@/lib/supabase/client";
-import { changeStatusSchema } from "@/lib/validations/order";
 import {
   recommendsProof,
   requiresNote,
   type OrderStatus,
 } from "@/lib/constants/orderStatus";
+import { createClient } from "@/lib/supabase/client";
+import { changeStatusSchema } from "@/lib/validations/order";
 import {
   Camera,
   CheckCircle,
@@ -17,7 +17,7 @@ import {
   Play,
   XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type Props = {
   orderId: string;
@@ -47,6 +47,9 @@ export function OrderActions({
   const [error, setError] = useState<string | null>(null);
   const [showNoteInput, setShowNoteInput] = useState(false);
   const [note, setNote] = useState("");
+
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
 
   // Acciones disponibles para el mensajero
   const courierActions: Array<{
@@ -94,8 +97,6 @@ export function OrderActions({
     setError(null);
 
     try {
-      const supabase = createClient();
-
       // Obtener sesión para el token de acceso
       const {
         data: { session },

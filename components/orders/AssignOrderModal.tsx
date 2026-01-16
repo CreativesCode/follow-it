@@ -3,11 +3,12 @@
 import { CourierSelect } from "@/components/couriers/CourierSelect";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import type { OrderWithRelations } from "@/types/orders";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, UserPlus, X } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -30,6 +31,10 @@ export function AssignOrderModal({
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { businessMember, user } = useAuth();
+
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
 
   const isAssigned = order.status === "assigned";
 
@@ -65,28 +70,39 @@ export function AssignOrderModal({
     setError(null);
 
     try {
-      const supabase = createClient();
+      // Usar businessMember del contexto si está disponible
+      let effectiveBusinessMember = businessMember;
 
-      // Obtener usuario autenticado
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      // Asegurar que tenemos el usuario
+      let effectiveUser = user;
+      if (!effectiveUser) {
+        const {
+          data: { user: fetchedUser },
+          error: userError,
+        } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        throw new Error("No autorizado");
+        if (userError || !fetchedUser) {
+          throw new Error("No autorizado");
+        }
+        effectiveUser = fetchedUser;
       }
 
-      // Verificar que es business member
-      const { data: businessMember, error: memberError } = await supabase
-        .from("business_members")
-        .select("business_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle();
+      if (!effectiveBusinessMember) {
+        // Solo consultar si no tenemos datos del contexto
+        const { data: bm, error: memberError } = await supabase
+          .from("business_members")
+          .select("business_id, user_id, role, is_active, created_at")
+          .eq("user_id", effectiveUser.id)
+          .eq("is_active", true)
+          .maybeSingle();
 
-      if (memberError || !businessMember) {
-        throw new Error("Solo los miembros del negocio pueden asignar pedidos");
+        if (memberError || !bm) {
+          throw new Error(
+            "Solo los miembros del negocio pueden asignar pedidos"
+          );
+        }
+
+        effectiveBusinessMember = bm ?? undefined;
       }
 
       // Si se quiere desasignar
@@ -96,7 +112,7 @@ export function AssignOrderModal({
           .from("orders")
           .select("id, status, business_id")
           .eq("id", order.id)
-          .eq("business_id", businessMember.business_id)
+          .eq("business_id", effectiveBusinessMember.business_id)
           .single();
 
         if (checkError || !existingOrder) {
@@ -117,12 +133,12 @@ export function AssignOrderModal({
 
         // Crear evento
         await supabase.from("order_events").insert({
-          business_id: businessMember.business_id,
+          business_id: effectiveBusinessMember.business_id,
           order_id: order.id,
           type: "order_unassigned",
           from_status: existingOrder.status,
           to_status: "pending",
-          created_by: user.id,
+          created_by: effectiveUser.id,
         });
       }
       // Si se quiere asignar/reasignar
@@ -132,7 +148,7 @@ export function AssignOrderModal({
           .from("orders")
           .select("id, status, business_id, code, dropoff_address")
           .eq("id", order.id)
-          .eq("business_id", businessMember.business_id)
+          .eq("business_id", effectiveBusinessMember.business_id)
           .single();
 
         if (orderError || !existingOrder) {
@@ -150,7 +166,7 @@ export function AssignOrderModal({
           .from("couriers")
           .select("id, display_name, is_active, user_id")
           .eq("id", data.courier_id)
-          .eq("business_id", businessMember.business_id)
+          .eq("business_id", effectiveBusinessMember.business_id)
           .single();
 
         if (courierError || !courier) {
@@ -187,13 +203,13 @@ export function AssignOrderModal({
         // Crear evento
         const orderCode = existingOrder.code || `#${order.id.slice(0, 8)}`;
         await supabase.from("order_events").insert({
-          business_id: businessMember.business_id,
+          business_id: effectiveBusinessMember.business_id,
           order_id: order.id,
           type: "order_assigned",
           from_status: existingOrder.status,
           to_status: "assigned",
           courier_id: data.courier_id,
-          created_by: user.id,
+          created_by: effectiveUser.id,
           meta: { courier_name: courier.display_name },
         });
 

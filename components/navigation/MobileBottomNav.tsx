@@ -1,13 +1,13 @@
 "use client";
 
-import { useUserRole } from "@/lib/hooks/useUserRole";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { Home, Package, Users } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 export function MobileBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { type: roleType } = useUserRole();
+  const { roleType } = useAuth();
 
   const isBusiness = roleType === "business";
 

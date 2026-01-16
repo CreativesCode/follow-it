@@ -5,7 +5,7 @@ import type { OrderProofWithUrl } from "@/types/proofs";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { Clock, FileSignature, Image, Loader2, MapPin, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Props = {
   orderId: string;
@@ -17,6 +17,9 @@ export function ProofGallery({ orderId }: Props) {
   const [selectedProof, setSelectedProof] = useState<OrderProofWithUrl | null>(
     null
   );
+
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
 
   console.log("ProofGallery: Renderizando con orderId", {
     orderId,
@@ -34,8 +37,6 @@ export function ProofGallery({ orderId }: Props) {
 
     async function fetchProofs() {
       try {
-        const supabase = createClient();
-
         // Obtener usuario autenticado
         const {
           data: { user },
@@ -165,11 +166,13 @@ function ProofViewer({
   );
   const [loading, setLoading] = useState(!proof.signed_url);
 
+  // Memoizar el cliente de Supabase para el visor
+  const supabaseForViewer = useMemo(() => createClient(), []);
+
   useEffect(() => {
     if (!proof.signed_url) {
       // Obtener signed URL directamente de Supabase Storage
-      const supabase = createClient();
-      supabase.storage
+      supabaseForViewer.storage
         .from("proofs")
         .createSignedUrl(proof.storage_path, 15 * 60) // 15 minutos
         .then(({ data: urlData, error }) => {
@@ -179,7 +182,7 @@ function ProofViewer({
         })
         .finally(() => setLoading(false));
     }
-  }, [proof]);
+  }, [proof, supabaseForViewer]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex flex-col safe-area-inset modal-container">

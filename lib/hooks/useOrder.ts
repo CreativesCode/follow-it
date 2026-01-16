@@ -1,9 +1,10 @@
 "use client";
 
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import { updateOrderSchema } from "@/lib/validations/order";
 import type { OrderWithRelations } from "@/types/orders";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type UseOrderReturn = {
   order: OrderWithRelations | null;
@@ -17,41 +18,53 @@ export function useOrder(orderId: string): UseOrderReturn {
   const [order, setOrder] = useState<OrderWithRelations | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { businessMember, courier } = useAuth();
+
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
 
   const fetchOrder = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const supabase = createClient();
+      // Usar businessMember/courier del contexto si está disponible, sino consultar
+      let effectiveBusinessMember = businessMember;
+      let effectiveCourier = courier;
 
-      // Obtener usuario autenticado
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      if (!effectiveBusinessMember && !effectiveCourier) {
+        // Solo consultar si no tenemos datos del contexto
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        throw new Error("No autorizado");
-      }
+        if (userError || !user) {
+          throw new Error("No autorizado");
+        }
 
-      // Obtener rol del usuario
-      const { data: businessMember } = await supabase
-        .from("business_members")
-        .select("business_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle();
+        const { data: bm } = await supabase
+          .from("business_members")
+          .select("business_id, user_id, role, is_active, created_at")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
 
-      const { data: courier } = await supabase
-        .from("couriers")
-        .select("id, business_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle();
+        const { data: c } = await supabase
+          .from("couriers")
+          .select(
+            "id, business_id, user_id, display_name, phone, is_active, created_at"
+          )
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
 
-      if (!businessMember && !courier) {
-        throw new Error("No autorizado");
+        if (!bm && !c) {
+          throw new Error("No autorizado");
+        }
+
+        effectiveBusinessMember = bm ?? undefined;
+        effectiveCourier = c ?? undefined;
       }
 
       // Decodificar el orderId si viene de URL
@@ -83,8 +96,8 @@ export function useOrder(orderId: string): UseOrderReturn {
       }
 
       // Si es business member, filtrar por business_id
-      if (businessMember) {
-        query = query.eq("business_id", businessMember.business_id);
+      if (effectiveBusinessMember) {
+        query = query.eq("business_id", effectiveBusinessMember.business_id);
       }
       // Si es courier, RLS automáticamente filtra por assigned_courier_id
 
@@ -111,31 +124,44 @@ export function useOrder(orderId: string): UseOrderReturn {
   const updateOrder = useCallback(
     async (data: any) => {
       try {
-        const supabase = createClient();
-
         // Validar datos con Zod
         const validatedData = updateOrderSchema.parse(data);
 
-        // Obtener usuario autenticado
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+        // Usar businessMember del contexto si está disponible
+        let effectiveBusinessMember = businessMember;
 
-        if (userError || !user) {
-          return { error: "No autorizado" };
+        if (!effectiveBusinessMember) {
+          // Obtener usuario autenticado
+          const {
+            data: { user },
+            error: userError,
+          } = await supabase.auth.getUser();
+
+          if (userError || !user) {
+            return { error: "No autorizado" };
+          }
+
+          // Verificar que es business member
+          const { data: bm, error: memberError } = await supabase
+            .from("business_members")
+            .select("business_id, user_id, role, is_active, created_at")
+            .eq("user_id", user.id)
+            .eq("is_active", true)
+            .maybeSingle();
+
+          if (memberError || !bm) {
+            return {
+              error: "Solo los miembros del negocio pueden actualizar pedidos",
+            };
+          }
+
+          effectiveBusinessMember = bm ?? undefined;
         }
 
-        // Verificar que es business member
-        const { data: businessMember, error: memberError } = await supabase
-          .from("business_members")
-          .select("business_id")
-          .eq("user_id", user.id)
-          .eq("is_active", true)
-          .maybeSingle();
-
-        if (memberError || !businessMember) {
-          return { error: "Solo los miembros del negocio pueden actualizar pedidos" };
+        if (!effectiveBusinessMember) {
+          return {
+            error: "Solo los miembros del negocio pueden actualizar pedidos",
+          };
         }
 
         const decodedOrderId = decodeURIComponent(orderId);
@@ -145,7 +171,7 @@ export function useOrder(orderId: string): UseOrderReturn {
           .from("orders")
           .select("id, business_id, status, customer_id")
           .eq("id", decodedOrderId)
-          .eq("business_id", businessMember.business_id)
+          .eq("business_id", effectiveBusinessMember.business_id)
           .single();
 
         if (checkError || !existingOrder) {
@@ -178,7 +204,7 @@ export function useOrder(orderId: string): UseOrderReturn {
             const { data: customer, error: customerError } = await supabase
               .from("customers")
               .insert({
-                business_id: businessMember.business_id,
+                business_id: effectiveBusinessMember.business_id,
                 name: validatedData.customer_name,
                 phone: validatedData.customer_phone,
               })
@@ -240,7 +266,9 @@ export function useOrder(orderId: string): UseOrderReturn {
               message: issue.message,
             })) || [];
           return {
-            error: `Datos inválidos: ${details.map((d) => d.message).join(", ")}`,
+            error: `Datos inválidos: ${details
+              .map((d) => d.message)
+              .join(", ")}`,
           };
         }
 
@@ -249,7 +277,7 @@ export function useOrder(orderId: string): UseOrderReturn {
         return { error: errorMessage };
       }
     },
-    [orderId]
+    [orderId, supabase, businessMember, courier]
   );
 
   return {

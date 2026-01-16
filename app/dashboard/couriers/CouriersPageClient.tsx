@@ -2,10 +2,11 @@
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { FormInput } from "@/components/ui/FormInput";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { useRealtimeLocations } from "@/lib/hooks/useRealtimeLocations";
 import { createClient } from "@/lib/supabase/client";
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 // Dynamic import para evitar errores de SSR con react-leaflet
 const CouriersMap = dynamic(
@@ -60,6 +61,12 @@ export default function CouriersPageClient({
   const [courierName, setCourierName] = useState("");
   const [courierEmail, setCourierEmail] = useState("");
 
+  // Memoizar cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
+
+  // Usar businessMember y user del contexto si está disponible
+  const { businessMember, user } = useAuth();
+
   // Obtener ubicaciones en tiempo real de los mensajeros
   const {
     couriers: couriersWithLocations,
@@ -73,30 +80,29 @@ export default function CouriersPageClient({
     setSuccess(null);
 
     try {
-      const supabase = createClient();
-
-      // Obtener usuario autenticado
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
+      // Verificar que el usuario está autenticado
+      if (!user) {
         setError("No autorizado");
         return;
       }
 
       // Verificar que el usuario es miembro del negocio
-      const { data: membership } = await supabase
-        .from("business_members")
-        .select("role")
-        .eq("business_id", businessId)
-        .eq("user_id", user.id)
-        .maybeSingle();
+      // Usar businessMember del contexto si está disponible
+      if (businessMember && businessMember.business_id === businessId) {
+        // Ya tenemos la verificación del contexto
+      } else {
+        // Solo consultar si no tenemos datos del contexto
+        const { data: membership } = await supabase
+          .from("business_members")
+          .select("role")
+          .eq("business_id", businessId)
+          .eq("user_id", user.id)
+          .maybeSingle();
 
-      if (!membership) {
-        setError("No eres miembro de este negocio");
-        return;
+        if (!membership) {
+          setError("No eres miembro de este negocio");
+          return;
+        }
       }
 
       // Generar código de invitación usando RPC

@@ -5,7 +5,7 @@ import type {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
 } from "@supabase/supabase-js";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export interface Notification {
   id: string;
@@ -36,12 +36,13 @@ export function useNotifications(): UseNotificationsReturn {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const userIdRef = useRef<string | null>(null);
 
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
+
   const fetchNotifications = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-
-      const supabase = createClient();
 
       // Obtener usuario autenticado
       const {
@@ -73,11 +74,10 @@ export function useNotifications(): UseNotificationsReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
-  const markAsRead = async (notificationIds: string[]) => {
+  const markAsRead = useCallback(async (notificationIds: string[]) => {
     try {
-      const supabase = createClient();
 
       // Obtener usuario autenticado
       const {
@@ -112,11 +112,10 @@ export function useNotifications(): UseNotificationsReturn {
       console.error("Error marking notifications as read:", err);
       throw err;
     }
-  };
+  }, [supabase]);
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
-      const supabase = createClient();
 
       // Obtener usuario autenticado
       const {
@@ -151,12 +150,11 @@ export function useNotifications(): UseNotificationsReturn {
       console.error("Error marking all notifications as read:", err);
       throw err;
     }
-  };
+  }, [supabase]);
 
   // Set up realtime subscription
   useEffect(() => {
     let mounted = true;
-    const supabase = createClient();
 
     const setupRealtime = async () => {
       // Get current user
@@ -288,7 +286,7 @@ export function useNotifications(): UseNotificationsReturn {
       }
       userIdRef.current = null;
     };
-  }, [fetchNotifications]); // fetchNotifications is memoized with useCallback
+  }, [fetchNotifications, supabase]); // fetchNotifications is memoized with useCallback
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 

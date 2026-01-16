@@ -2,8 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { logout } from "@/lib/auth/client-actions";
-import { useUser } from "@/lib/hooks/useUser";
-import { useUserRole } from "@/lib/hooks/useUserRole";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { Home, LogOut, Package, Users, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -15,8 +14,7 @@ type Props = {
 export function MobileMenu({ isOpen, onClose }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const { type: roleType } = useUserRole();
-  const { user } = useUser();
+  const { roleType, user } = useAuth();
 
   const isBusiness = roleType === "business";
 

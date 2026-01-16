@@ -4,9 +4,9 @@ import { ProofCapture } from "@/components/proofs/ProofCapture";
 import { ProofGallery } from "@/components/proofs/ProofGallery";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { useOrder } from "@/lib/hooks/useOrder";
-import { useUserRole } from "@/lib/hooks/useUserRole";
+import { createClient } from "@/lib/supabase/client";
 import type { OrderFormData } from "@/types/orders";
 import {
   Check,
@@ -17,7 +17,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AssignOrderModal } from "./AssignOrderModal";
 import { OrderActions, hasCourierActions } from "./OrderActions";
 import { OrderForm } from "./OrderForm";
@@ -40,7 +40,7 @@ export function OrderDetailModal({
   const { order, loading, error, updateOrder, refetch } = useOrder(
     orderId || ""
   );
-  const { type: userRoleType, courier } = useUserRole();
+  const { roleType: userRoleType, courier } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -52,6 +52,9 @@ export function OrderDetailModal({
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [whatsappError, setWhatsappError] = useState<string | null>(null);
   const [showProofCapture, setShowProofCapture] = useState(false);
+
+  // Memoizar el cliente de Supabase
+  const supabase = useMemo(() => createClient(), []);
 
   // Verificar si el usuario es el mensajero asignado
   const isCourier =
@@ -91,8 +94,6 @@ export function OrderDetailModal({
     setCopied(false);
 
     try {
-      const supabase = createClient();
-
       // Obtener sesión para el token de acceso
       const {
         data: { session },
@@ -172,8 +173,6 @@ export function OrderDetailModal({
     setWhatsappError(null);
 
     try {
-      const supabase = createClient();
-
       // Obtener sesión para el token de acceso
       const {
         data: { session },

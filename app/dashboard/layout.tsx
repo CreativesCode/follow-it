@@ -4,13 +4,17 @@ import { DesktopHeader } from "@/components/navigation/DesktopHeader";
 import { DesktopSidebar } from "@/components/navigation/DesktopSidebar";
 import { MobileBottomNav } from "@/components/navigation/MobileBottomNav";
 import { MobileHeader } from "@/components/navigation/MobileHeader";
-import { AuthProvider, useAuth } from "@/lib/contexts/AuthContext";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { useIsCapacitor } from "@/lib/hooks/useIsCapacitor";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const isMobile = useIsMobile();
   const isCapacitor = useIsCapacitor();
   const router = useRouter();
@@ -69,17 +73,5 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>
-  );
-}
-
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <AuthProvider>
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
-    </AuthProvider>
   );
 }
